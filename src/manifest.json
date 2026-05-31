@@ -1,0 +1,16 @@
+{
+  "short_name": "WS360",
+  "name": "WorkSupport360 — Hire Verified Tech Experts",
+  "description": "India's first identity-safe freelancer marketplace for MNC professionals.",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#f97316",
+  "background_color": "#ffffff"
+}
