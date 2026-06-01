@@ -70,7 +70,7 @@ const ECard=({e,onClick}:{e:any,onClick:()=>void})=>{
   const cur=e.currency==='INR'?'₹':'$';
   return(
     <div onClick={onClick} onMouseEnter={()=>sH(true)} onMouseLeave={()=>sH(false)}
-      style={{maxWidth:280,width:'100%',margin:'0 auto',background:'#fff',border:`1.5px solid ${h?'#c7d2fe':'#f1f5f9'}`,borderRadius:20,overflow:'hidden',cursor:'pointer',transition:'all .2s',boxShadow:h?'0 20px 60px rgba(79,70,229,0.12)':'0 2px 8px rgba(0,0,0,0.04)',transform:h?'translateY(-5px)':'none',display:'flex',flexDirection:'column'}}>
+      style={{background:'#fff',border:`1.5px solid ${h?'#c7d2fe':'#f1f5f9'}`,borderRadius:20,overflow:'hidden',cursor:'pointer',transition:'all .2s',boxShadow:h?'0 20px 60px rgba(79,70,229,0.12)':'0 2px 8px rgba(0,0,0,0.04)',transform:h?'translateY(-5px)':'none',display:'flex',flexDirection:'column'}}>
       {/* Colored header */}
       <div style={{height:8,background:`linear-gradient(90deg,${c},${c}88)`}}/>
       <div style={{padding:'20px 20px 16px',flex:1,display:'flex',flexDirection:'column'}}>
@@ -361,7 +361,7 @@ const FaqRow=({f,def}:{f:any,def?:boolean})=>{
 // ══════════════════════════════════════════════════════
 const HomePage:React.FC=()=>{
   const navigate=useNavigate();
-  const{isAuthenticated,user}=useAuthStore();
+  const{isAuthenticated,user,logout}=useAuthStore();
   const[hs,sHs]=useState('');
   const[sf,sSf]=useState('');
   const[pg,sPg]=useState(1);
@@ -395,14 +395,7 @@ const HomePage:React.FC=()=>{
 @keyframes float3{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
 .fu{animation:fu .6s cubic-bezier(.16,1,.3,1) both}
 input::placeholder,textarea::placeholder{color:#94a3b8}
-::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:3px}
-.hp-hero-grid{display:grid;grid-template-columns:1fr 500px;gap:64px;align-items:center;}
-.hp-hero-right{position:relative;height:500px;display:flex;align-items:center;justify-content:center;}
-.hp-4col{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;}
-.hp-3col{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
-.hp-form-grid{display:grid;grid-template-columns:380px 1fr;gap:40px;align-items:flex-start;}
-@media(max-width:1100px){.hp-hero-grid,.hp-4col,.hp-3col,.hp-form-grid{grid-template-columns:1fr!important;}.hp-hero-right{display:none!important;}.hp-form-grid{gap:24px!important;}.hp-4col{gap:16px!important;}.hp-3col{gap:16px!important;}}
-@media(max-width:720px){.hp-hero-grid{gap:28px!important;}.hp-form-grid{padding:0!important;}.hp-hero-grid input{width:100%!important;}.hp-4col,.hp-3col{gap:14px!important;}}`;
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:3px}`;
     document.head.appendChild(s);
     const iv=setInterval(()=>sSlide(i=>(i+1)%PHOTOS.length),5000);
     return()=>{try{document.head.removeChild(l);document.head.removeChild(s);}catch{}clearInterval(iv);};
@@ -419,7 +412,7 @@ input::placeholder,textarea::placeholder{color:#94a3b8}
   const submit=async(ev:React.FormEvent)=>{ev.preventDefault();if(!contact.name||!contact.email||!contact.message){toast.error('Fill all required fields');return;}sSending(true);try{await publicApi.contact(contact);toast.success("We'll respond within 4 hours!");sContact({name:'',email:'',reason:'general',message:''});}catch{toast.error('Failed');}finally{sSending(false);}};
 
   return(
-    <div style={{minHeight:'100vh',background:'#fff',overflowX:'hidden'}}>
+    <div style={{minHeight:'100vh',background:'#fff'}}>
 
       {/* ═══ NAV ═══ */}
       <nav style={{position:'fixed',top:0,left:0,right:0,zIndex:200,height:64,display:'flex',alignItems:'center',padding:'0 32px',background:'rgba(255,255,255,0.96)',backdropFilter:'blur(20px)',borderBottom:'1px solid #f1f5f9',boxShadow:'0 1px 0 #f1f5f9'}}>
@@ -441,7 +434,10 @@ input::placeholder,textarea::placeholder{color:#94a3b8}
           </div>
           <div style={{display:'flex',alignItems:'center',gap:8,marginLeft:'auto'}}>
             {isAuthenticated
-              ?<button onClick={()=>navigate(dash)} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 20px',borderRadius:12,background:'linear-gradient(135deg,#f97316,#ef4444)',color:'#fff',border:'none',fontSize:13,fontWeight:700,cursor:'pointer',boxShadow:'0 4px 14px rgba(249,115,22,0.3)'}}><LayoutDashboard size={14}/>Dashboard</button>
+              ?<div style={{display:'flex',alignItems:'center',gap:8}}>
+                <button onClick={()=>navigate(dash)} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 16px',borderRadius:12,background:'linear-gradient(135deg,#f97316,#ef4444)',color:'#fff',border:'none',fontSize:13,fontWeight:700,cursor:'pointer',boxShadow:'0 4px 14px rgba(249,115,22,0.3)'}}><LayoutDashboard size={14}/>Dashboard</button>
+                <button onClick={async()=>{await logout();navigate('/');}} style={{padding:'8px 14px',borderRadius:12,background:'#fff',color:'#ef4444',border:'1.5px solid #fecaca',fontSize:13,fontWeight:600,cursor:'pointer',transition:'all .15s'}} onMouseEnter={e=>{(e.target as HTMLElement).style.background='#fef2f2';}} onMouseLeave={e=>{(e.target as HTMLElement).style.background='#fff';}}>Logout</button>
+              </div>
               :<><button onClick={()=>navigate('/login')} style={{padding:'8px 18px',borderRadius:12,background:'#fff',color:'#374151',border:'1.5px solid #e2e8f0',fontSize:13,fontWeight:600,cursor:'pointer'}}>Log in</button>
                 <button onClick={()=>navigate('/register')} style={{padding:'8px 20px',borderRadius:12,background:'#0f172a',color:'#fff',border:'none',fontSize:13,fontWeight:700,cursor:'pointer'}}>Join free →</button>
               </>
@@ -461,7 +457,7 @@ input::placeholder,textarea::placeholder{color:#94a3b8}
         </div>
 
         <div style={{maxWidth:1320,margin:'0 auto',padding:'72px 32px 60px',position:'relative',zIndex:1}}>
-          <div className="hp-hero-grid" style={{display:'grid',gridTemplateColumns:'1fr 500px',gap:64,alignItems:'center'}}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 500px',gap:64,alignItems:'center'}}>
             <div>
               <div className="fu" style={{display:'inline-flex',alignItems:'center',gap:8,background:'#eff6ff',border:'1.5px solid #bfdbfe',borderRadius:100,padding:'7px 18px',marginBottom:28}}>
                 <span style={{width:8,height:8,borderRadius:'50%',background:'#4f46e5',display:'inline-block',boxShadow:'0 0 10px rgba(79,70,229,0.6)'}}/>
@@ -542,7 +538,7 @@ input::placeholder,textarea::placeholder{color:#94a3b8}
             </div>
 
             {/* RIGHT — Floating cards */}
-            <div className="hp-hero-right" style={{position:'relative',height:500,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <div style={{position:'relative',height:500,display:'flex',alignItems:'center',justifyContent:'center'}}>
               {/* Main expert card */}
               <div style={{position:'absolute',width:280,background:'#fff',borderRadius:24,boxShadow:'0 28px 80px rgba(0,0,0,0.16)',border:'1.5px solid #f1f5f9',padding:'22px',animation:'float1 5s ease-in-out infinite',zIndex:3}}>
                 <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:16}}>
@@ -605,7 +601,7 @@ input::placeholder,textarea::placeholder{color:#94a3b8}
 
         {/* Stats bar */}
         <div style={{background:'#0f172a'}}>
-          <div className="hp-4col" style={{maxWidth:1320,margin:'0 auto',padding:'0 32px',display:'grid',gridTemplateColumns:'repeat(4,1fr)'}}>
+          <div style={{maxWidth:1320,margin:'0 auto',padding:'0 32px',display:'grid',gridTemplateColumns:'repeat(4,1fr)'}}>
             {[
               {v:stats?.totalFreelancers??1240,s:'+',l:'Verified experts',p:'',ic:<Users size={20}/>},
               {v:stats?.completedProjects??580,s:'+',l:'Projects completed',p:'',ic:<CheckCircle size={20}/>},
@@ -648,7 +644,7 @@ input::placeholder,textarea::placeholder{color:#94a3b8}
             </div>
             <a href="#experts" style={{fontSize:14,fontWeight:700,color:'#4f46e5',textDecoration:'none',display:'flex',alignItems:'center',gap:5}}>View all experts <ChevronRight size={16}/></a>
           </div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:16}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16}}>
             {CATS.map((cat)=>(
               <button key={cat.name} onClick={()=>{sSf(cat.name.split('/')[0].trim());document.getElementById('experts')?.scrollIntoView({behavior:'smooth'});}}
                 style={{background:'#fff',border:`2px solid ${cat.clr}30`,borderRadius:22,padding:'28px 24px',textAlign:'left',cursor:'pointer',transition:'all .22s',position:'relative',overflow:'hidden'}}
@@ -696,16 +692,16 @@ input::placeholder,textarea::placeholder{color:#94a3b8}
 
           {/* EXPERT GRID — 4 columns, large cards */}
           {fl?(
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))',gap:20}}>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:20}}>
               {Array.from({length:12}).map((_,i)=>(
                 <div key={i} style={{background:'#fff',borderRadius:20,height:320,animation:`fu .5s ease both`,animationDelay:`${i*.04}s`}}/>
               ))}
             </div>
           ):(
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))',gap:20}}>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:20}}>
               {experts.map((e:any,i:number)=>(
                 <div key={e.id} style={{animation:`fu .5s cubic-bezier(.16,1,.3,1) both`,animationDelay:`${Math.min(i,11)*.05}s`}}>
-                  <ECard e={e} onClick={()=>sSel(e)}/>
+                  <ECard e={e} onClick={()=>navigate(`/expert/${e.id}`)}/>
                 </div>
               ))}
               {experts.length===0&&(
@@ -746,7 +742,7 @@ input::placeholder,textarea::placeholder{color:#94a3b8}
             <h2 style={{fontSize:38,fontWeight:900,color:'#0f172a',letterSpacing:'-0.03em',margin:'0 0 12px'}}>Hire in hours, not weeks</h2>
             <p style={{fontSize:16,color:'#64748b',maxWidth:440,margin:'0 auto'}}>Admin-coordinated. Escrow-protected. No cold outreach required.</p>
           </div>
-          <div className="hp-4col" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:20,position:'relative'}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:20,position:'relative'}}>
             <div style={{position:'absolute',top:40,left:'12.5%',right:'12.5%',height:2,background:'linear-gradient(90deg,transparent 0%,#e2e8f0 10%,#e2e8f0 90%,transparent 100%)'}}/>
             {[
               {n:'01',e:'🔍',t:'Browse & filter',d:'Search 1,200+ verified experts by skill, rate, experience, and real-time availability.',c:'#4f46e5'},
@@ -798,14 +794,14 @@ input::placeholder,textarea::placeholder{color:#94a3b8}
             </div>
           </div>
           {/* QS Grid — larger cards */}
-          <div className="hp-4col" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:16}}>
             {((qe as any[]).length>0?(qe as any[]):EXPERTS.filter(e=>e.available)).slice(0,8).map((e:any)=>{
               const C=['#4f46e5','#0891b2','#059669','#d97706','#dc2626','#7c3aed'];
               const c=C[e.aliasName.charCodeAt(0)%C.length];
               const cur=e.currency==='INR'?'₹':'$';
               const ini=e.aliasName.split(' ').map((w:string)=>w[0]).join('');
               return(
-                <div key={e.id} onClick={()=>sSel({...e,_v:'q'})}
+                <div key={e.id} onClick={()=>navigate(`/expert/${e.id}?action=quick`)}
                   style={{background:'#fff',borderRadius:20,border:'2px solid #fed7aa',padding:'20px',cursor:'pointer',transition:'all .22s'}}
                   onMouseEnter={ev=>{(ev.currentTarget as HTMLElement).style.transform='translateY(-4px)';(ev.currentTarget as HTMLElement).style.boxShadow='0 16px 48px rgba(249,115,22,0.15)';(ev.currentTarget as HTMLElement).style.borderColor='#f97316';}}
                   onMouseLeave={ev=>{(ev.currentTarget as HTMLElement).style.transform='none';(ev.currentTarget as HTMLElement).style.boxShadow='none';(ev.currentTarget as HTMLElement).style.borderColor='#fed7aa';}}>
@@ -826,7 +822,7 @@ input::placeholder,textarea::placeholder{color:#94a3b8}
                     <span style={{fontWeight:900,fontSize:16,color:'#0f172a'}}>{cur}{e.rate}<span style={{fontSize:10,fontWeight:400,color:'#9ca3af'}}>/hr</span></span>
                     <span style={{fontSize:11,color:'#9ca3af',display:'flex',alignItems:'center',gap:3}}><Clock size={10}/>~30min</span>
                   </div>
-                  <button onClick={ev=>{ev.stopPropagation();sSel({...e,_v:'q'});}} style={{width:'100%',padding:'11px',borderRadius:14,background:'linear-gradient(135deg,#f97316,#ef4444)',color:'#fff',border:'none',fontSize:13,fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:7,boxShadow:'0 4px 14px rgba(249,115,22,0.3)',transition:'opacity .15s'}}
+                  <button onClick={ev=>{ev.stopPropagation();navigate(`/expert/${e.id}?action=quick`);}} style={{width:'100%',padding:'11px',borderRadius:14,background:'linear-gradient(135deg,#f97316,#ef4444)',color:'#fff',border:'none',fontSize:13,fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:7,boxShadow:'0 4px 14px rgba(249,115,22,0.3)',transition:'opacity .15s'}}
                     onMouseEnter={ev=>(ev.currentTarget as HTMLElement).style.opacity='.85'} onMouseLeave={ev=>(ev.currentTarget as HTMLElement).style.opacity='1'}>
                     <Zap size={14}/>Book now · 1 hr session
                   </button>
@@ -845,7 +841,7 @@ input::placeholder,textarea::placeholder{color:#94a3b8}
             <h2 style={{fontSize:38,fontWeight:900,color:'#fff',letterSpacing:'-0.03em',margin:'0 0 10px'}}>Trusted by 500+ companies</h2>
             <p style={{fontSize:16,color:'rgba(255,255,255,0.45)',margin:0}}>Real results from real clients across India, UK, Singapore & UAE</p>
           </div>
-          <div className="hp-3col" style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:20}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:20}}>
             {[
               {q:'Found a React expert from TCS in 4 hours. Built our entire dashboard in 3 weeks. Incredible quality. Best investment we ever made.',n:'Prashant K.',c:'Fintech startup · Mumbai',r:5,tag:'Hired React Dev',saved:'3 months saved'},
               {q:"The alias system is genius. Got a senior Infosys architect who wouldn't publicly freelance. Deep enterprise experience. Saved us over $50K.",n:'Sarah M.',c:'SaaS company · London, UK',r:5,tag:'Enterprise hire',saved:'$50K saved'},
@@ -906,7 +902,7 @@ input::placeholder,textarea::placeholder{color:#94a3b8}
             <h2 style={{fontSize:38,fontWeight:900,color:'#0f172a',letterSpacing:'-0.03em',margin:'0 0 10px'}}>We respond in 4 hours</h2>
             <p style={{fontSize:16,color:'#64748b',margin:0}}>Enterprise inquiry, partnership, or just a question? We're here.</p>
           </div>
-          <div className="hp-form-grid" style={{display:'grid',gridTemplateColumns:'380px 1fr',gap:40,alignItems:'flex-start'}}>
+          <div style={{display:'grid',gridTemplateColumns:'380px 1fr',gap:40,alignItems:'flex-start'}}>
             <div style={{display:'flex',flexDirection:'column',gap:14}}>
               {[{e:'📧',t:'Email us',v:'help@worksupport360.com',h:'mailto:help@worksupport360.com'},{e:'💬',t:'WhatsApp',v:'+91-9441363687',h:'https://wa.me/919441363687'},{e:'📅',t:'Book a call',v:'Schedule on Calendly',h:'#'}].map(c=>(
                 <a key={c.t} href={c.h} style={{display:'flex',alignItems:'center',gap:18,padding:'20px 22px',background:'#f8fafc',border:'1px solid #f1f5f9',borderRadius:20,textDecoration:'none',transition:'all .2s'}}
@@ -975,7 +971,7 @@ input::placeholder,textarea::placeholder{color:#94a3b8}
       </footer>
 
       {sel&&<Modal e={sel} onClose={()=>sSel(null)} auth={isAuthenticated} role={user?.role} nav={navigate}/>}
-      <SupportChatWidget/>
+      {(user?.role as string) !== 'agent' && <SupportChatWidget/>}
     </div>
   );
 };

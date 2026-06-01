@@ -1,332 +1,580 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  MessageCircle, X, Send, Loader2, Check, RefreshCw,
-  Headphones, Clock, User, LogOut, Bell, AlertCircle,
-  Search, Zap, Mail, Phone
+  MessageCircle, X, Send, Loader2, Check, RefreshCw, CheckCircle,
+  Headphones, Clock, User, LogOut, Bell, AlertCircle, Search,
+  Mail, Phone, ChevronDown, Zap, Filter, Circle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 
-// ── Types ─────────────────────────────────────────────────────
 interface Ticket {
-  id: string; subject: string; category: string;
-  status: string; priority: string;
+  id: string; subject: string; category: string; status: string; priority: string;
   userType?: string; contactEmail?: string; contactPhone?: string;
   botSummary?: string; userName?: string; userEmail?: string;
   assignedAgentName?: string; isRead: boolean;
   createdAt: string; lastMessageAt: string; messageCount: number;
 }
-interface Message {
-  id: string; senderRole: string; content: string; isAi: boolean; sentAt: string;
-}
+interface Msg { id: string; senderRole: string; content: string; isAi: boolean; sentAt: string; }
 
-const P_BG: Record<string,string>   = { urgent:'#fee2e2', high:'#fff7ed', normal:'#eff6ff', low:'#f8fafc' };
-const P_TXT: Record<string,string>  = { urgent:'#dc2626', high:'#ea580c', normal:'#2563eb', low:'#64748b' };
-const P_DOT: Record<string,string>  = { urgent:'#dc2626', high:'#f97316', normal:'#3b82f6', low:'#94a3b8' };
-const S_BG: Record<string,string>   = { open:'#fff7ed', assigned:'#eff6ff', resolved:'#f0fdf4', closed:'#f8fafc', bot:'#faf5ff' };
-const S_TXT: Record<string,string>  = { open:'#c2410c', assigned:'#1d4ed8', resolved:'#16a34a', closed:'#64748b', bot:'#7c3aed' };
+const PC: Record<string,{bg:string;txt:string;dot:string}> = {
+  urgent:{bg:'#fee2e2',txt:'#dc2626',dot:'#dc2626'},
+  high:{bg:'#fff7ed',txt:'#ea580c',dot:'#f97316'},
+  normal:{bg:'#eff6ff',txt:'#2563eb',dot:'#3b82f6'},
+  low:{bg:'#f8fafc',txt:'#64748b',dot:'#94a3b8'},
+};
+const SC: Record<string,{bg:string;txt:string}> = {
+  open:{bg:'#fff7ed',txt:'#c2410c'},
+  assigned:{bg:'#eff6ff',txt:'#1d4ed8'},
+  resolved:{bg:'#f0fdf4',txt:'#16a34a'},
+  closed:{bg:'#f8fafc',txt:'#64748b'},
+  bot:{bg:'#faf5ff',txt:'#7c3aed'},
+};
 
-const QUICK_REPLIES = [
-  { label: 'Checking now',    text: "Thanks for reaching out! I'm looking into your issue right now and will update you in a few minutes." },
-  { label: 'Need project ID', text: "To help you faster, could you please share your project ID or invoice number? You can find it in your dashboard." },
-  { label: 'Payment done',    text: "Your payment has been processed. Please allow 1–2 business days for the funds to reflect in your account." },
-  { label: 'Escalated',       text: "I've escalated this to our technical team. You'll receive an update within 4 business hours. Sorry for the inconvenience." },
-  { label: 'Resolved ✅',     text: "Your issue has been resolved! Please check your dashboard and let me know if everything looks good." },
-  { label: 'Payout 3 days',   text: "Payouts are processed within 3 business days of client payment confirmation. If it's been longer, please share your bank details so I can investigate." },
-  { label: 'WhatsApp',        text: "For faster help, WhatsApp us: +91-9441363687. Available Mon–Sat, 9am–7pm IST." },
+const QUICK = [
+  "Thanks for reaching out! I'm looking into your issue right now.",
+  "Could you share your project ID or invoice number so I can check faster?",
+  "I've confirmed your payment has been processed. Allow 1-2 business days to reflect.",
+  "I've escalated this to our technical team — you'll hear back within 4 hours.",
+  "Your issue is now resolved. Let me know if anything else comes up!",
+  "Payouts are processed within 3 business days after client payment. I'll investigate.",
+  "For faster help: WhatsApp +91-9441363687 (Mon-Sat 9am-7pm IST).",
 ];
 
 const AgentPortal: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
-  const [tickets, setTickets]       = useState<Ticket[]>([]);
-  const [selected, setSelected]     = useState<Ticket | null>(null);
-  const [messages, setMessages]     = useState<Message[]>([]);
-  const [reply, setReply]           = useState('');
-  const [loading, setLoading]       = useState(true);
-  const [sending, setSending]       = useState(false);
-  const [filterStatus, setFilter]   = useState('open');
-  const [searchQ, setSearchQ]       = useState('');
-  const [unread, setUnread]         = useState(0);
-  const [showQuick, setShowQuick]   = useState(false);
-  const [myOnly, setMyOnly]         = useState(false);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [sel, setSel]     = useState<Ticket | null>(null);
+  const [msgs, setMsgs]   = useState<Msg[]>([]);
+  const [reply, setReply] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [filter, setFilter]   = useState('open');
+  const [search, setSearch]   = useState('');
+  const [unread, setUnread]   = useState(0);
+  const [showQuick, setShowQuick] = useState(false);
+  const [myOnly, setMyOnly] = useState(false);
+  const [actionMenu, setActionMenu] = useState(false);
   const msgEnd = useRef<HTMLDivElement>(null);
   const pollRef = useRef<any>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-
   const scroll = () => setTimeout(() => msgEnd.current?.scrollIntoView({ behavior: 'smooth' }), 80);
 
   const loadTickets = useCallback(async () => {
     try {
-      const r = await api.get(`/support/admin/tickets${filterStatus !== 'all' ? `?status=${filterStatus}` : ''}`);
+      const r = await api.get(`/support/admin/tickets${filter !== 'all' ? `?status=${filter}` : ''}`);
       setTickets(r.data);
-    } catch { toast.error('Failed to load'); }
+    } catch { toast.error('Failed to load tickets'); }
     finally { setLoading(false); }
-  }, [filterStatus]);
+  }, [filter]);
 
   const loadUnread = useCallback(async () => {
     try { const r = await api.get('/support/admin/tickets/unread-count'); setUnread(r.data.count); } catch {}
   }, []);
 
   const loadMsgs = useCallback(async (tid: string) => {
-    try { const r = await api.get(`/support/tickets/${tid}/messages`); setMessages(r.data); scroll(); } catch {}
+    try { const r = await api.get(`/support/tickets/${tid}/messages`); setMsgs(r.data); scroll(); } catch {}
   }, []);
 
-  useEffect(() => { loadTickets(); loadUnread(); }, [filterStatus]);
+  useEffect(() => { loadTickets(); loadUnread(); }, [filter]);
 
+  // Poll messages every 4s when ticket selected
   useEffect(() => {
     clearInterval(pollRef.current);
-    if (selected) { pollRef.current = setInterval(() => { loadMsgs(selected.id); loadUnread(); }, 4000); }
+    if (sel) {
+      loadMsgs(sel.id);
+      pollRef.current = setInterval(async () => {
+        await loadMsgs(sel.id);
+        await loadUnread();
+        // Refresh ticket info for status changes
+        try {
+          const r = await api.get(`/support/admin/tickets${filter !== 'all' ? `?status=${filter}` : ''}`);
+          setTickets(r.data);
+        } catch {}
+      }, 4000);
+    }
     return () => clearInterval(pollRef.current);
-  }, [selected?.id]);
+  }, [sel?.id]);
 
-  const pick = async (t: Ticket) => { setSelected(t); setShowQuick(false); setReply(''); await loadMsgs(t.id); inputRef.current?.focus(); };
+  const pick = async (t: Ticket) => {
+    setSel(t); setShowQuick(false); setReply('');
+    await loadMsgs(t.id);
+    inputRef.current?.focus();
+  };
 
   const assign = async () => {
-    if (!selected) return;
+    if (!sel) return;
     try {
-      await api.patch(`/support/admin/tickets/${selected.id}/assign`);
+      await api.patch(`/support/admin/tickets/${sel.id}/assign`);
       toast.success('Ticket assigned to you!');
-      setSelected(t => t ? { ...t, status: 'assigned', assignedAgentName: user?.name || 'Me' } : t);
+      setSel(t => t ? { ...t, status: 'assigned', assignedAgentName: user?.name || 'Me' } : t);
       loadTickets();
     } catch { toast.error('Assign failed'); }
   };
 
   const sendReply = async (resolve = false) => {
-    if (!selected || !reply.trim()) return;
+    if (!sel || !reply.trim()) return;
     setSending(true);
     try {
-      await api.post(`/support/admin/tickets/${selected.id}/reply`, { message: reply.trim(), resolve });
+      await api.post(`/support/admin/tickets/${sel.id}/reply`, { message: reply.trim(), resolve });
       setReply('');
-      toast.success(resolve ? 'Ticket resolved!' : 'Sent!');
-      if (resolve) setSelected(t => t ? { ...t, status: 'resolved' } : t);
-      await loadMsgs(selected.id); loadTickets();
+      toast.success(resolve ? '✅ Resolved!' : 'Reply sent!');
+      if (resolve) setSel(t => t ? { ...t, status: 'resolved' } : t);
+      await loadMsgs(sel.id);
+      loadTickets();
     } catch { toast.error('Failed'); }
     finally { setSending(false); }
   };
 
   const setStatus = async (status: string) => {
-    if (!selected) return;
-    await api.patch(`/support/admin/tickets/${selected.id}/status`, JSON.stringify(status), { headers: { 'Content-Type': 'application/json' } });
-    setSelected(t => t ? { ...t, status } : t); loadTickets(); toast.success(`Marked ${status}`);
+    if (!sel) return;
+    try {
+      await api.patch(`/support/admin/tickets/${sel.id}/status`,
+        JSON.stringify(status), { headers: { 'Content-Type': 'application/json' } });
+      setSel(t => t ? { ...t, status } : t);
+      loadTickets();
+      toast.success(`Marked as ${status}`);
+      setActionMenu(false);
+    } catch {}
+  };
+
+  // ── Create ticket manually for a customer ────────────────
+  const [newTkt, setNewTkt] = useState({ email: '', subject: '', desc: '', show: false });
+
+  const createManualTicket = async () => {
+    if (!newTkt.email || !newTkt.subject) { toast.error('Email and subject required'); return; }
+    try {
+      await api.post('/support/tickets', {
+        subject: newTkt.subject,
+        category: 'general',
+        priority: 'normal',
+        userType: 'client',
+        botSummary: `Manually created by agent ${user?.name}`,
+        contactEmail: newTkt.email,
+        firstMessage: newTkt.desc || newTkt.subject,
+      });
+      toast.success('Ticket created and assigned!');
+      setNewTkt({ email: '', subject: '', desc: '', show: false });
+      loadTickets();
+    } catch { toast.error('Failed to create ticket'); }
   };
 
   const visible = tickets.filter(t => {
     if (myOnly && t.assignedAgentName !== user?.name) return false;
-    if (searchQ) {
-      const q = searchQ.toLowerCase();
-      return t.subject.toLowerCase().includes(q) || (t.userName||'').toLowerCase().includes(q) || (t.contactEmail||'').toLowerCase().includes(q);
+    if (search) {
+      const q = search.toLowerCase();
+      return t.subject.toLowerCase().includes(q) ||
+        (t.userName || '').toLowerCase().includes(q) ||
+        (t.contactEmail || '').toLowerCase().includes(q);
     }
     return true;
   });
 
   const urgentN = tickets.filter(t => t.priority === 'urgent' && t.status !== 'resolved').length;
+  const openN   = tickets.filter(t => t.status === 'open' || t.status === 'assigned').length;
+  const myN     = tickets.filter(t => t.assignedAgentName === user?.name && t.status !== 'resolved').length;
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50" style={{ fontFamily: "'Outfit',sans-serif" }}>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: '#f8fafc', fontFamily: "'Inter',system-ui,sans-serif" }}>
+      <style>{`
+        *{box-sizing:border-box}
+        @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+        input::placeholder,textarea::placeholder{color:#94a3b8}
+        ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:4px}
+      `}</style>
 
-      {/* ── NAV ──────────────────────────────────────────── */}
-      <div className="shrink-0 h-14 flex items-center justify-between px-5 bg-white border-b border-gray-200 shadow-sm z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl font-black text-white text-xs flex items-center justify-center shadow-md" style={{ background: 'linear-gradient(135deg,#f97316,#dc2626)' }}>WS</div>
+      {/* ── TOP BAR ──────────────────────────────────────── */}
+      <div style={{ height: 56, background: '#fff', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', padding: '0 20px', gap: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.06)', flexShrink: 0, zIndex: 10 }}>
+
+        {/* Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginRight: 8 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg,#f97316,#dc2626)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: 11 }}>WS</div>
           <div>
-            <div className="font-black text-gray-900 text-sm leading-none">WorkSupport<span className="text-orange-500">360</span></div>
-            <div className="text-xs text-gray-400 leading-none">Support Agent Portal</div>
+            <div style={{ fontWeight: 800, fontSize: 13, color: '#0f172a', lineHeight: 1.2 }}>WorkSupport<span style={{ color: '#f97316' }}>360</span></div>
+            <div style={{ fontSize: 10, color: '#94a3b8', lineHeight: 1 }}>Agent Portal</div>
           </div>
         </div>
 
-        <div className="hidden md:flex items-center gap-5 text-sm">
-          <div className="flex items-center gap-1.5"><div className="w-2 h-2 bg-amber-400 rounded-full"/><strong className="text-gray-800">{tickets.filter(t=>t.status==='open').length}</strong><span className="text-gray-400 ml-1">open</span></div>
-          <div className="flex items-center gap-1.5"><div className="w-2 h-2 bg-blue-500 rounded-full"/><strong className="text-gray-800">{tickets.filter(t=>t.status==='assigned').length}</strong><span className="text-gray-400 ml-1">assigned</span></div>
-          {urgentN > 0 && <div className="flex items-center gap-1.5 bg-red-50 border border-red-100 text-red-700 text-xs font-bold px-3 py-1.5 rounded-xl"><AlertCircle size={12} className="animate-pulse"/>{urgentN} urgent</div>}
+        {/* Stats pills */}
+        <div style={{ display: 'flex', gap: 8, flex: 1 }}>
+          {[
+            { label: 'Open', n: openN, c: '#f97316', bg: '#fff7ed' },
+            { label: 'Mine', n: myN, c: '#4f46e5', bg: '#eff6ff' },
+            { label: 'Urgent', n: urgentN, c: '#dc2626', bg: '#fef2f2' },
+          ].map(s => (
+            <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 100, background: s.bg, fontSize: 12, fontWeight: 700, color: s.c }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.c, display: 'inline-block' }}/>
+              {s.n} {s.label}
+            </div>
+          ))}
+          {urgentN > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 700, color: '#dc2626', animation: 'fadeIn .3s ease' }}>
+              <AlertCircle size={14}/> {urgentN} urgent need attention!
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <button onClick={() => { loadTickets(); loadUnread(); }} className="w-9 h-9 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-all">
-              <Bell size={16} className="text-gray-600"/>
-            </button>
-            {unread > 0 && <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-white text-xs font-black flex items-center justify-center border-2 border-white">{unread}</span>}
-          </div>
+        {/* New ticket button */}
+        <button onClick={() => setNewTkt(n => ({ ...n, show: true }))}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 10, background: '#f8fafc', border: '1.5px solid #e2e8f0', fontSize: 12, fontWeight: 700, color: '#374151', cursor: 'pointer', transition: 'all .15s' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#eff6ff'; (e.currentTarget as HTMLElement).style.borderColor = '#4f46e5'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#f8fafc'; (e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0'; }}>
+          <MessageCircle size={13}/> New ticket
+        </button>
 
-          <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-1.5">
-            <div className="w-7 h-7 rounded-lg bg-green-600 text-white font-black text-xs flex items-center justify-center">{user?.name?.[0]||'A'}</div>
-            <div className="hidden sm:block">
-              <div className="text-xs font-black text-green-900 leading-none">{user?.name}</div>
-              <div className="text-xs text-green-600 flex items-center gap-1 mt-0.5"><span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"/>Online</div>
+        {/* Notifications */}
+        <div style={{ position: 'relative' }}>
+          <button onClick={() => { loadTickets(); loadUnread(); }} style={{ width: 36, height: 36, borderRadius: 10, background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b' }}>
+            <Bell size={16}/>
+          </button>
+          {unread > 0 && <span style={{ position: 'absolute', top: -5, right: -5, minWidth: 18, height: 18, borderRadius: 9, background: '#ef4444', color: '#fff', fontSize: 10, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 4px', border: '2px solid #fff' }}>{unread}</span>}
+        </div>
+
+        {/* Agent */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: 12, padding: '6px 12px' }}>
+          <div style={{ width: 28, height: 28, borderRadius: 8, background: '#059669', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 11 }}>
+            {user?.name?.[0] || 'A'}
+          </div>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 800, color: '#065f46', lineHeight: 1.2 }}>{user?.name}</div>
+            <div style={{ fontSize: 10, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 3 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', display: 'inline-block', animation: 'pulse 2s infinite' }}/>
+              Online
             </div>
           </div>
-
-          <button onClick={async () => { await logout(); navigate('/login'); }} className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-700 px-3 py-2 rounded-xl border border-transparent hover:border-gray-200 transition-all">
-            <LogOut size={13}/><span className="hidden sm:inline ml-1">Logout</span>
-          </button>
         </div>
+
+        <button onClick={async () => { await logout(); navigate('/'); }}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', borderRadius: 10, background: 'transparent', border: '1px solid #e2e8f0', fontSize: 12, color: '#94a3b8', cursor: 'pointer', transition: 'all .15s' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#ef4444'; (e.currentTarget as HTMLElement).style.borderColor = '#fecaca'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#94a3b8'; (e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0'; }}>
+          <LogOut size={13}/> Logout
+        </button>
       </div>
 
       {/* ── BODY ─────────────────────────────────────────── */}
-      <div className="flex flex-1 overflow-hidden">
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
         {/* Ticket list */}
-        <div className="w-80 shrink-0 flex flex-col border-r border-gray-200 bg-white">
-          <div className="p-3 border-b border-gray-100 space-y-2">
-            <div className="relative">
-              <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
-              <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Search tickets…" className="w-full pl-8 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none bg-gray-50 focus:bg-white focus:border-gray-400"/>
+        <div style={{ width: 300, flexShrink: 0, borderRight: '1px solid #e2e8f0', background: '#fff', display: 'flex', flexDirection: 'column' }}>
+          {/* Filters */}
+          <div style={{ padding: '12px', borderBottom: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ position: 'relative' }}>
+              <Search size={12} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}/>
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tickets, emails…"
+                style={{ width: '100%', paddingLeft: 30, paddingRight: 12, paddingTop: 7, paddingBottom: 7, border: '1.5px solid #f1f5f9', borderRadius: 10, fontSize: 12, outline: 'none', background: '#f8fafc', color: '#374151' }}/>
             </div>
-            <div className="flex gap-1.5 flex-wrap">
-              {['open','assigned','resolved','all'].map(s => (
-                <button key={s} onClick={() => setFilter(s)} className={`px-2.5 py-1 rounded-lg text-xs font-bold capitalize transition-all ${filterStatus===s?'text-white':'bg-gray-50 text-gray-400 hover:text-gray-600'}`} style={filterStatus===s?{background:'#0f172a'}:{}}>{s}</button>
+            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+              {['open', 'assigned', 'resolved', 'all'].map(s => (
+                <button key={s} onClick={() => setFilter(s)}
+                  style={{ padding: '4px 10px', borderRadius: 8, border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer', textTransform: 'capitalize', background: filter === s ? '#0f172a' : '#f8fafc', color: filter === s ? '#fff' : '#64748b', transition: 'all .15s' }}>
+                  {s}
+                </button>
               ))}
-              <label className="flex items-center gap-1 ml-auto cursor-pointer">
-                <input type="checkbox" checked={myOnly} onChange={e => setMyOnly(e.target.checked)} className="w-3 h-3 rounded"/>
-                <span className="text-xs text-gray-500">Mine</span>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 'auto', fontSize: 11, color: '#64748b', cursor: 'pointer' }}>
+                <input type="checkbox" checked={myOnly} onChange={e => setMyOnly(e.target.checked)} style={{ width: 12, height: 12 }}/>
+                Mine
               </label>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto">
-            {loading ? <div className="flex justify-center py-10"><Loader2 size={20} className="animate-spin text-gray-300"/></div> :
-             visible.length === 0 ? <div className="text-center py-12 text-gray-300 text-xs"><Headphones size={28} className="mx-auto mb-2 opacity-30"/>No tickets</div> :
-             visible.map(t => (
-              <button key={t.id} onClick={() => pick(t)} className={`w-full text-left px-4 py-3 border-b border-gray-50 hover:bg-gray-50 transition-all ${selected?.id===t.id?'bg-blue-50 border-l-4 border-l-blue-500':''} ${!t.isRead&&t.status!=='resolved'?'bg-amber-50/30':''}`}>
-                <div className="flex items-start gap-2 mb-1">
-                  <div className="w-2 h-2 rounded-full shrink-0 mt-1.5" style={{background:P_DOT[t.priority]||P_DOT.normal}}/>
-                  <span className={`text-xs font-bold flex-1 truncate ${!t.isRead?'text-gray-900':'text-gray-600'}`}>{t.subject}</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold shrink-0" style={{background:S_BG[t.status]||'#f8fafc',color:S_TXT[t.status]||'#64748b'}}>{t.status}</span>
-                </div>
-                <div className="flex items-center justify-between text-xs text-gray-400 ml-4">
-                  <span className="truncate">{t.userName||t.contactEmail||'Guest'}</span>
-                  <span className="shrink-0 ml-2">{new Date(t.lastMessageAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
-                </div>
-                <div className="flex items-center gap-1.5 ml-4 mt-1 flex-wrap">
-                  <span className="text-xs px-1.5 py-0.5 rounded-md font-medium" style={{background:P_BG[t.priority]||P_BG.normal,color:P_TXT[t.priority]||P_TXT.normal}}>{t.priority}</span>
-                  {t.userType && <span className="text-xs text-gray-400 capitalize">{t.userType}</span>}
-                  {t.assignedAgentName && <span className="text-xs text-blue-600 font-medium">👤 {t.assignedAgentName}</span>}
-                  {!t.isRead && t.status!=='resolved' && <span className="text-xs bg-blue-500 text-white px-1.5 py-0.5 rounded-full font-bold ml-auto">New</span>}
-                </div>
-              </button>
-             ))}
+          {/* List */}
+          <div style={{ flex: 1, overflowY: 'auto' }}>
+            {loading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 40 }}><Loader2 size={20} style={{ color: '#d1d5db', animation: 'spin 1s linear infinite' }}/></div>
+            ) : visible.length === 0 ? (
+              <div style={{ textAlign: 'center', paddingTop: 48, color: '#d1d5db' }}>
+                <Headphones size={28} style={{ margin: '0 auto 8px' }}/>
+                <div style={{ fontSize: 12, fontWeight: 600 }}>No tickets</div>
+              </div>
+            ) : visible.map(t => {
+              const pc = PC[t.priority] || PC.normal;
+              const sc = SC[t.status] || SC.open;
+              const isSelected = sel?.id === t.id;
+              return (
+                <button key={t.id} onClick={() => pick(t)} style={{
+                  width: '100%', textAlign: 'left', padding: '12px 14px',
+                  borderBottom: '1px solid #f8fafc', cursor: 'pointer', transition: 'all .15s',
+                  background: isSelected ? '#eff6ff' : !t.isRead ? '#fefce8' : '#fff',
+                  borderLeft: isSelected ? '3px solid #4f46e5' : '3px solid transparent',
+                  borderRight: 'none', borderTop: 'none',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 5 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: pc.dot, flexShrink: 0, marginTop: 4 }}/>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: !t.isRead ? 800 : 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 }}>{t.subject}</div>
+                      <div style={{ fontSize: 11, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {t.contactEmail || t.userName || 'Guest'}
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 6, background: sc.bg, color: sc.txt, flexShrink: 0 }}>{t.status}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 16 }}>
+                    <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 6, background: pc.bg, color: pc.txt }}>{t.priority}</span>
+                    {t.userType && <span style={{ fontSize: 10, color: '#94a3b8', textTransform: 'capitalize' }}>{t.userType}</span>}
+                    {t.assignedAgentName && <span style={{ fontSize: 10, color: '#4f46e5', fontWeight: 600, marginLeft: 'auto' }}>👤 {t.assignedAgentName}</span>}
+                    {!t.isRead && t.status !== 'resolved' && <span style={{ fontSize: 9, fontWeight: 800, background: '#3b82f6', color: '#fff', padding: '1px 6px', borderRadius: 6, marginLeft: 'auto' }}>NEW</span>}
+                  </div>
+                  <div style={{ fontSize: 10, color: '#d1d5db', paddingLeft: 16, marginTop: 4 }}>
+                    {new Date(t.lastMessageAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {t.messageCount} msgs
+                  </div>
+                </button>
+              );
+            })}
           </div>
 
-          <div className="shrink-0 p-3 border-t border-gray-100 bg-gray-50">
-            <div className="flex justify-around text-center">
-              <div><div className="text-base font-black text-gray-900">{tickets.filter(t=>t.status==='open').length}</div><div className="text-xs text-gray-400">Open</div></div>
-              <div><div className="text-base font-black text-blue-700">{tickets.filter(t=>t.status==='assigned'&&t.assignedAgentName===user?.name).length}</div><div className="text-xs text-gray-400">My cases</div></div>
-              <div><div className="text-base font-black text-green-700">{tickets.filter(t=>t.status==='resolved').length}</div><div className="text-xs text-gray-400">Resolved</div></div>
-            </div>
+          {/* Stats footer */}
+          <div style={{ borderTop: '1px solid #f1f5f9', padding: '10px 14px', background: '#fafafa', display: 'flex', justifyContent: 'space-around' }}>
+            {[
+              { label: 'Open', n: tickets.filter(t => t.status === 'open').length, c: '#f97316' },
+              { label: 'Mine', n: tickets.filter(t => t.assignedAgentName === user?.name).length, c: '#4f46e5' },
+              { label: 'Done', n: tickets.filter(t => t.status === 'resolved').length, c: '#059669' },
+            ].map(s => (
+              <div key={s.label} style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 16, fontWeight: 900, color: s.c }}>{s.n}</div>
+                <div style={{ fontSize: 10, color: '#9ca3af' }}>{s.label}</div>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Conversation */}
-        {!selected ? (
-          <div className="flex-1 flex items-center justify-center bg-gray-50">
-            <div className="text-center">
-              <div className="w-20 h-20 rounded-3xl bg-white border-2 border-gray-100 flex items-center justify-center mx-auto mb-5 shadow-sm"><Headphones size={36} className="text-gray-300"/></div>
-              <div className="text-lg font-black text-gray-700 mb-1">Select a ticket</div>
-              <div className="text-sm text-gray-400 mb-5">Pick a conversation from the left to start helping</div>
-              {urgentN > 0 && <div className="inline-flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 text-sm font-bold px-4 py-2.5 rounded-xl"><AlertCircle size={15}/>{urgentN} urgent ticket{urgentN>1?'s':''} need attention!</div>}
+        {/* ── CONVERSATION ─────────────────────────────── */}
+        {!sel ? (
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', gap: 16 }}>
+            <div style={{ width: 72, height: 72, borderRadius: 24, background: '#fff', border: '2px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
+              <Headphones size={32} style={{ color: '#d1d5db' }}/>
             </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: '#374151', marginBottom: 6 }}>Select a ticket to start chatting</div>
+              <div style={{ fontSize: 13, color: '#94a3b8' }}>{visible.length} ticket{visible.length !== 1 ? 's' : ''} in inbox</div>
+            </div>
+            {urgentN > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 14, padding: '10px 18px', fontSize: 13, fontWeight: 700, color: '#dc2626' }}>
+                <AlertCircle size={16}/> {urgentN} urgent ticket{urgentN > 1 ? 's' : ''} need attention!
+              </div>
+            )}
           </div>
         ) : (
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {/* Info bar */}
-            <div className="shrink-0 px-5 py-3 border-b border-gray-200 bg-white">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span className="font-black text-gray-900">{selected.subject}</span>
-                    <span className="text-xs px-2.5 py-1 rounded-full font-bold" style={{background:S_BG[selected.status],color:S_TXT[selected.status]}}>{selected.status}</span>
-                    <span className="text-xs px-2.5 py-1 rounded-full border font-bold" style={{background:P_BG[selected.priority],color:P_TXT[selected.priority]}}>{selected.priority}</span>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+            {/* Ticket header */}
+            <div style={{ padding: '12px 20px', background: '#fff', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 5 }}>
+                    <span style={{ fontWeight: 800, fontSize: 14, color: '#0f172a' }}>{sel.subject}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 8, background: SC[sel.status]?.bg, color: SC[sel.status]?.txt }}>{sel.status}</span>
+                    <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 8, border: `1px solid ${PC[sel.priority]?.dot}33`, background: PC[sel.priority]?.bg, color: PC[sel.priority]?.txt }}>{sel.priority}</span>
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
-                    <span className="flex items-center gap-1"><User size={11}/>{selected.userName||'Guest'}</span>
-                    {selected.contactEmail&&<span className="flex items-center gap-1"><Mail size={11}/>{selected.contactEmail}</span>}
-                    {selected.contactPhone&&<span className="flex items-center gap-1"><Phone size={11}/>{selected.contactPhone}</span>}
-                    {selected.userType&&<span className="capitalize bg-gray-100 px-2 py-0.5 rounded-md">{selected.userType}</span>}
-                    <span className="text-gray-300 font-mono">#{selected.id.slice(0,8).toUpperCase()}</span>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 12, color: '#64748b' }}>
+                    {sel.contactEmail && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Mail size={11}/>{sel.contactEmail}</span>}
+                    {sel.contactPhone && <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Phone size={11}/>{sel.contactPhone}</span>}
+                    {sel.userType && <span style={{ background: '#f1f5f9', padding: '2px 8px', borderRadius: 6, textTransform: 'capitalize' }}>{sel.userType}</span>}
+                    <span style={{ color: '#94a3b8', fontFamily: 'monospace', fontSize: 11 }}>#{sel.id.slice(0, 8).toUpperCase()}</span>
                   </div>
-                  {selected.botSummary&&<div className="mt-1.5 text-xs text-violet-700 bg-violet-50 border border-violet-100 rounded-lg px-3 py-1.5 max-w-xl">🤖 <strong>Bot summary:</strong> {selected.botSummary}</div>}
+                  {sel.botSummary && (
+                    <div style={{ marginTop: 6, fontSize: 11, color: '#7c3aed', background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 8, padding: '5px 10px', maxWidth: 600 }}>
+                      🤖 {sel.botSummary}
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {selected.status==='open'&&<button onClick={assign} className="text-xs px-4 py-2 text-white rounded-xl font-bold hover:opacity-90" style={{background:'linear-gradient(135deg,#1d4ed8,#1e40af)'}}><User size={12} className="inline mr-1"/>Pick up</button>}
-                  {selected.status!=='resolved'&&selected.status!=='closed'&&<button onClick={()=>setStatus('resolved')} className="text-xs px-4 py-2 bg-green-600 text-white rounded-xl font-bold hover:opacity-90"><Check size={12} className="inline mr-1"/>Resolve</button>}
-                  {selected.status==='resolved'&&<button onClick={()=>setStatus('open')} className="text-xs px-4 py-2 border border-gray-200 text-gray-600 rounded-xl font-bold hover:bg-gray-50"><RefreshCw size={12} className="inline mr-1"/>Re-open</button>}
-                  <button onClick={()=>setStatus('closed')} className="text-xs px-3 py-2 border border-gray-200 text-gray-400 rounded-xl font-bold hover:text-gray-600">Close</button>
+
+                {/* Action buttons */}
+                <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'flex-start' }}>
+                  {sel.status === 'open' && (
+                    <button onClick={assign}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 10, background: '#4f46e5', color: '#fff', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                      <User size={12}/> Pick up
+                    </button>
+                  )}
+                  {sel.status !== 'resolved' && sel.status !== 'closed' && (
+                    <button onClick={() => setStatus('resolved')}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 10, background: '#059669', color: '#fff', border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                      <Check size={12}/> Resolve
+                    </button>
+                  )}
+                  <div style={{ position: 'relative' }}>
+                    <button onClick={() => setActionMenu(!actionMenu)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '7px 12px', borderRadius: 10, background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: 12, color: '#64748b', cursor: 'pointer' }}>
+                      More <ChevronDown size={12}/>
+                    </button>
+                    {actionMenu && (
+                      <div style={{ position: 'absolute', top: '110%', right: 0, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', zIndex: 50, minWidth: 160, overflow: 'hidden' }}>
+                        {[['open','Re-open'],['closed','Close'],['assigned','Mark assigned']].map(([s, l]) => (
+                          <button key={s} onClick={() => setStatus(s)}
+                            style={{ width: '100%', textAlign: 'left', padding: '10px 14px', fontSize: 13, fontWeight: 600, color: '#374151', background: 'transparent', border: 'none', cursor: 'pointer', transition: 'background .15s' }}
+                            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#f8fafc'}
+                            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                            {l}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <button onClick={() => { loadMsgs(sel.id); loadTickets(); }}
+                    style={{ width: 34, height: 34, borderRadius: 10, background: '#f8fafc', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#94a3b8' }}>
+                    <RefreshCw size={13}/>
+                  </button>
                 </div>
               </div>
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-5 py-5 bg-gray-50">
-              {messages.length===0 ? <div className="text-center py-12 text-gray-400 text-sm"><MessageCircle size={28} className="mx-auto mb-2 opacity-30"/>No messages yet</div> :
-               messages.map(m => {
-                const isAgent = m.senderRole==='agent';
-                const isAi = m.isAi;
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {msgs.length === 0 ? (
+                <div style={{ textAlign: 'center', paddingTop: 40, color: '#d1d5db' }}>
+                  <MessageCircle size={28} style={{ margin: '0 auto 8px' }}/>
+                  <div style={{ fontSize: 12 }}>No messages yet</div>
+                </div>
+              ) : msgs.map(m => {
+                const isAgent = m.senderRole === 'agent';
+                const isUser  = m.senderRole === 'user';
+                const isAi    = m.isAi;
                 return (
-                  <div key={m.id} className={`flex gap-3 mb-4 ${isAgent?'flex-row-reverse':'flex-row'}`}>
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-black shrink-0 mt-0.5 ${isAgent?'bg-gradient-to-br from-green-500 to-emerald-600':isAi?'bg-gradient-to-br from-violet-500 to-purple-700':'bg-gradient-to-br from-gray-400 to-gray-600'}`}>
-                      {isAgent?(selected.assignedAgentName||user?.name||'A')[0]:isAi?'🤖':(selected.userName||'U')[0]}
+                  <div key={m.id} style={{ display: 'flex', gap: 10, flexDirection: isAgent ? 'row-reverse' : 'row', animation: 'fadeIn .3s ease' }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 800, fontSize: 12, color: '#fff', flexShrink: 0, marginTop: 2,
+                      background: isAgent ? '#059669' : isAi ? '#7c3aed' : '#64748b'
+                    }}>
+                      {isAgent ? (user?.name?.[0] || 'A') : isAi ? '🤖' : (sel.userName?.[0] || sel.contactEmail?.[0] || '?')}
                     </div>
-                    <div className={`flex flex-col max-w-[75%] ${isAgent?'items-end':'items-start'}`}>
-                      <div className={`text-xs font-bold mb-1 ${isAgent?'text-green-700':isAi?'text-violet-600':'text-gray-500'}`}>
-                        {isAgent?(selected.assignedAgentName||user?.name||'Agent'):isAi?'AI Bot':(selected.userName||'User')}
-                        <span className="text-gray-300 ml-2 font-normal">{new Date(m.sentAt).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
+                    <div style={{ maxWidth: '70%', display: 'flex', flexDirection: 'column', alignItems: isAgent ? 'flex-end' : 'flex-start', gap: 3 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: isAgent ? '#059669' : isAi ? '#7c3aed' : '#64748b' }}>
+                          {isAgent ? (sel.assignedAgentName || user?.name || 'Agent') : isAi ? 'AI Bot' : (sel.userName || sel.contactEmail || 'User')}
+                        </span>
+                        <span style={{ fontSize: 10, color: '#d1d5db' }}>
+                          {new Date(m.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
                       </div>
-                      <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${isAgent?'bg-green-600 text-white rounded-tr-sm shadow-md':isAi?'bg-violet-50 border border-violet-100 text-gray-800 rounded-tl-sm':'bg-white border border-gray-100 text-gray-800 rounded-tl-sm shadow-sm'}`}>
+                      <div style={{
+                        padding: '10px 14px', borderRadius: isAgent ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                        fontSize: 13, lineHeight: 1.6, maxWidth: '100%',
+                        background: isAgent ? '#059669' : isAi ? '#faf5ff' : '#fff',
+                        color: isAgent ? '#fff' : '#374151',
+                        border: isAgent ? 'none' : isAi ? '1px solid #e9d5ff' : '1px solid #f1f5f9',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                        wordBreak: 'break-word',
+                      }}>
                         {m.content}
                       </div>
                     </div>
                   </div>
                 );
-               })}
+              })}
               <div ref={msgEnd}/>
             </div>
 
-            {/* Reply */}
-            {selected.status!=='closed'&&(
-              <div className="shrink-0 border-t border-gray-200 bg-white">
-                {selected.assignedAgentName&&<div className="flex items-center gap-2 px-5 py-2 bg-gray-50 border-b border-gray-100 text-xs"><div className="w-5 h-5 rounded-md bg-green-600 text-white flex items-center justify-center font-black">{selected.assignedAgentName[0]}</div><span className="text-gray-500">Assigned to <strong className="text-gray-800">{selected.assignedAgentName}</strong></span></div>}
-                <div className="p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <button onClick={()=>setShowQuick(!showQuick)} className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border font-semibold transition-all ${showQuick?'bg-gray-900 text-white border-gray-900':'bg-gray-50 text-gray-500 border-gray-200 hover:border-gray-400'}`}>
-                      <Zap size={11}/> Quick replies {showQuick?'▲':'▼'}
-                    </button>
-                    <span className="text-xs text-gray-300">Click to insert</span>
+            {/* Reply area */}
+            {sel.status !== 'closed' && (
+              <div style={{ background: '#fff', borderTop: '1px solid #f1f5f9', padding: '12px 16px', flexShrink: 0 }}>
+                {/* Assigned banner */}
+                {sel.assignedAgentName && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, padding: '6px 12px', background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, fontSize: 12 }}>
+                    <div style={{ width: 20, height: 20, borderRadius: 6, background: '#059669', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800 }}>{sel.assignedAgentName[0]}</div>
+                    <span style={{ color: '#065f46' }}>Assigned to <strong>{sel.assignedAgentName}</strong></span>
+                    {sel.status === 'resolved' && <span style={{ marginLeft: 'auto', color: '#059669', fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}><Check size={11}/>Resolved</span>}
                   </div>
-                  {showQuick&&(
-                    <div className="grid grid-cols-2 gap-1.5 mb-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                      {QUICK_REPLIES.map((q,i)=>(
-                        <button key={i} onClick={()=>{setReply(q.text);setShowQuick(false);inputRef.current?.focus();}} className="text-left text-xs px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-600 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50 transition-all font-medium">
-                          <span className="text-blue-500 mr-1">→</span>{q.label}
+                )}
+
+                {/* Quick replies */}
+                <div style={{ marginBottom: 10 }}>
+                  <button onClick={() => setShowQuick(!showQuick)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 8, background: showQuick ? '#0f172a' : '#f8fafc', color: showQuick ? '#fff' : '#64748b', border: `1.5px solid ${showQuick ? '#0f172a' : '#e2e8f0'}`, fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all .15s' }}>
+                    <Zap size={11}/> Quick replies {showQuick ? '▲' : '▼'}
+                  </button>
+                  {showQuick && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5, marginTop: 8, padding: '10px', background: '#f8fafc', borderRadius: 12, border: '1px solid #f1f5f9' }}>
+                      {QUICK.map((q, i) => (
+                        <button key={i} onClick={() => { setReply(q); setShowQuick(false); inputRef.current?.focus(); }}
+                          style={{ textAlign: 'left', padding: '7px 10px', fontSize: 11, fontWeight: 600, border: '1px solid #e2e8f0', borderRadius: 9, background: '#fff', color: '#374151', cursor: 'pointer', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', transition: 'all .15s' }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#4f46e5'; (e.currentTarget as HTMLElement).style.color = '#4338ca'; (e.currentTarget as HTMLElement).style.background = '#eef2ff'; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0'; (e.currentTarget as HTMLElement).style.color = '#374151'; (e.currentTarget as HTMLElement).style.background = '#fff'; }}>
+                          → {q.slice(0, 45)}…
                         </button>
                       ))}
                     </div>
                   )}
-                  <div className="flex gap-3 items-end">
-                    <textarea ref={inputRef} value={reply} onChange={e=>setReply(e.target.value)}
-                      onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.ctrlKey){e.preventDefault();sendReply(false);}if(e.key==='Enter'&&e.ctrlKey){e.preventDefault();sendReply(true);}}}
-                      placeholder="Type reply… (Enter = Send · Ctrl+Enter = Resolve)" rows={3}
-                      className="flex-1 px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-gray-400 resize-none bg-white transition-all"/>
-                    <div className="flex flex-col gap-2 shrink-0">
-                      <button onClick={()=>sendReply(false)} disabled={!reply.trim()||sending} className="flex items-center gap-2 px-5 py-3 text-white rounded-xl font-black text-sm hover:opacity-90 disabled:opacity-40 shadow-md" style={{background:'linear-gradient(135deg,#0f172a,#1e3a5f)'}}>
-                        {sending?<Loader2 size={15} className="animate-spin"/>:<Send size={15}/>} Send
-                      </button>
-                      <button onClick={()=>sendReply(true)} disabled={!reply.trim()||sending} className="flex items-center gap-2 px-5 py-3 bg-green-600 text-white rounded-xl font-black text-sm hover:opacity-90 disabled:opacity-40">
-                        <Check size={15}/> Resolve
-                      </button>
-                    </div>
+                </div>
+
+                {/* Input */}
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+                  <textarea ref={inputRef} value={reply} onChange={e => setReply(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey) { e.preventDefault(); sendReply(false); } if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); sendReply(true); } }}
+                    placeholder="Type reply… (Enter = Send · Ctrl+Enter = Send & Resolve)"
+                    rows={3}
+                    style={{ flex: 1, padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: 14, fontSize: 13, resize: 'none', outline: 'none', fontFamily: 'inherit', transition: 'border .15s', background: '#fafafa', color: '#374151' }}
+                    onFocus={e => (e.target as HTMLTextAreaElement).style.borderColor = '#4f46e5'}
+                    onBlur={e => (e.target as HTMLTextAreaElement).style.borderColor = '#e2e8f0'}/>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
+                    <button onClick={() => sendReply(false)} disabled={!reply.trim() || sending}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', borderRadius: 12, background: 'linear-gradient(135deg,#0f172a,#1e3a5f)', color: '#fff', border: 'none', fontSize: 13, fontWeight: 800, cursor: 'pointer', opacity: (!reply.trim() || sending) ? 0.4 : 1, transition: 'all .15s' }}>
+                      {sending ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }}/> : <Send size={14}/>} Send
+                    </button>
+                    <button onClick={() => sendReply(true)} disabled={!reply.trim() || sending}
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', borderRadius: 12, background: '#059669', color: '#fff', border: 'none', fontSize: 13, fontWeight: 800, cursor: 'pointer', opacity: (!reply.trim() || sending) ? 0.4 : 1, transition: 'all .15s' }}>
+                      <Check size={14}/> Resolve
+                    </button>
                   </div>
-                  <div className="flex justify-between mt-2 px-1 text-xs text-gray-300">
-                    <span>Reply sent via in-app + email</span><span>Ctrl+Enter to resolve</span>
-                  </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 10, color: '#d1d5db', padding: '0 2px' }}>
+                  <span>Reply goes to user's chat + email notification</span>
+                  <span>Ctrl+Enter to send and resolve</span>
                 </div>
               </div>
             )}
           </div>
         )}
       </div>
+
+      {/* ── CREATE TICKET MODAL ──────────────────────────── */}
+      {newTkt.show && (
+        <div onClick={() => setNewTkt(n => ({ ...n, show: false }))}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background: '#fff', borderRadius: 20, padding: 28, width: 440, boxShadow: '0 24px 60px rgba(0,0,0,0.2)', animation: 'fadeIn .25s ease' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>Create ticket for customer</div>
+                <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>Agent-initiated ticket with auto-assignment</div>
+              </div>
+              <button onClick={() => setNewTkt(n => ({ ...n, show: false }))} style={{ width: 30, height: 30, borderRadius: '50%', background: '#f8fafc', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+                <X size={14}/>
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 800, color: '#64748b', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>CUSTOMER EMAIL *</label>
+                <input type="email" value={newTkt.email} onChange={e => setNewTkt(n => ({ ...n, email: e.target.value }))}
+                  placeholder="customer@company.com"
+                  style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: 12, fontSize: 13, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', transition: 'border .15s' }}
+                  onFocus={e => e.target.style.borderColor = '#4f46e5'} onBlur={e => e.target.style.borderColor = '#e2e8f0'}/>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 800, color: '#64748b', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>ISSUE SUBJECT *</label>
+                <input value={newTkt.subject} onChange={e => setNewTkt(n => ({ ...n, subject: e.target.value }))}
+                  placeholder="e.g. Payment not reflecting, Project not starting…"
+                  style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: 12, fontSize: 13, outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', transition: 'border .15s' }}
+                  onFocus={e => e.target.style.borderColor = '#4f46e5'} onBlur={e => e.target.style.borderColor = '#e2e8f0'}/>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 800, color: '#64748b', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>DESCRIPTION</label>
+                <textarea rows={3} value={newTkt.desc} onChange={e => setNewTkt(n => ({ ...n, desc: e.target.value }))}
+                  placeholder="Describe the issue in detail…"
+                  style={{ width: '100%', padding: '10px 14px', border: '1.5px solid #e2e8f0', borderRadius: 12, fontSize: 13, outline: 'none', fontFamily: 'inherit', resize: 'none', boxSizing: 'border-box', transition: 'border .15s' }}
+                  onFocus={e => e.target.style.borderColor = '#4f46e5'} onBlur={e => e.target.style.borderColor = '#e2e8f0'}/>
+              </div>
+              <button onClick={createManualTicket}
+                style={{ padding: '13px', borderRadius: 14, background: 'linear-gradient(135deg,#0f172a,#1e3a5f)', color: '#fff', border: 'none', fontSize: 14, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <MessageCircle size={16}/> Create & assign ticket
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

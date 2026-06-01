@@ -93,8 +93,16 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
   logout: async () => {
     const rt = localStorage.getItem('refreshToken');
-    try { if (rt) await authApi.logout(rt); } catch { /* ignore */ }
-    clearAuth();
+    // 1. Clear state immediately so UI updates right away
     set({ user: null, isAuthenticated: false });
+    clearAuth();
+    // 2. Also clear any other keys that may have been set
+    ['role','name','userId','picture','accessToken','refreshToken',
+     'userRole','userName','userPicture','pendingAction','ws360_chat_state'].forEach(k => {
+      try { localStorage.removeItem(k); } catch {}
+      try { sessionStorage.removeItem(k); } catch {}
+    });
+    // 3. Tell backend to revoke token (fire-and-forget)
+    try { if (rt) await authApi.logout(rt); } catch { /* ignore — client is already logged out */ }
   },
 }));

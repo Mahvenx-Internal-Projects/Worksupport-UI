@@ -366,11 +366,17 @@ const SupportChatWidget: React.FC = () => {
       } catch { addMsg('bot', '⚠️ Message failed to send. Please try again.'); }
       finally { setSending(false); }
     } else if (stage === 'waiting') {
-      // User types while waiting — add to ticket
+      // User types while waiting — add to ticket as extra context
       if (ticketId) {
-        await api.post(`/support/tickets/${ticketId}/messages`,
-          JSON.stringify(text), { headers: { 'Content-Type': 'application/json' } });
-        addMsg('bot', "✅ Message added to your ticket. Agent will respond soon.");
+        try {
+          await api.post(`/support/tickets/${ticketId}/messages`,
+            JSON.stringify(text), { headers: { 'Content-Type': 'application/json' } });
+          addMsg('bot', "✅ Got it! Your message has been added to the ticket. The agent will see it when they join.");
+        } catch {
+          addMsg('bot', "📝 I've noted your message. Our agent will see your full conversation when they join.");
+        }
+      } else {
+        addMsg('bot', `📝 Noted! While you wait, I can also try to help: ${getAiReply(text) || "feel free to ask any question — I'll do my best to answer."}`);
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -424,55 +430,78 @@ const SupportChatWidget: React.FC = () => {
   // ── Poll for agent messages ────────────────────────────────
   const startPolling = useCallback((tid: string) => {
     let lastMsgId: string | null = null;
+    let currentStage = 'waiting';
+    let shownAssigned = false;
+    let pollCount = 0;
 
     const poll = async () => {
+      pollCount++;
       try {
-        // Check ticket status
-        const statusRes = await api.get(`/support/tickets/${tid}/status`);
-        const status: TicketStatus = statusRes.data;
-        setTicketStatus(status);
+        const sr = await api.get(`/support/tickets/${tid}/status`);
+        const s = sr.data;
+        setTicketStatus(s);
 
-        if (status.status === 'assigned' && stage !== 'live') {
-          setStage('live');
-          addMsg('bot', `🟢 **${status.assignedAgentName || 'Agent'} has joined the chat!** You can now have a live conversation.`);
+        // Agent assigned — show ONCE
+        if (s.isAssigned && s.assignedAgentName && !shownAssigned) {
+          shownAssigned = true;
+          if (currentStage !== 'live') {
+            currentStage = 'live';
+            setStage('live');
+            setOpen(true);
+            addMsg('bot',
+              `🟢 **${s.assignedAgentName} has been assigned to you!**
+
+` +
+              `They can see your full conversation and will respond shortly. ` +
+              `You can type your message below — they will see it right away.`
+            );
+            scroll();
+          }
         }
 
-        // Fetch new messages
-        const msgsRes = await api.get(`/support/tickets/${tid}/messages`);
-        const serverMsgs = msgsRes.data as any[];
-        const agentMsgs = serverMsgs.filter(m => m.senderRole === 'agent');
+        // Show proactive wait messages (only if still waiting, not yet assigned)
+        if (!s.isAssigned && currentStage === 'waiting') {
+          if (pollCount === 3)   // ~15s
+            addMsg('bot', '🔔 Your ticket has been sent to our support team. An agent will be assigned shortly!');
+          if (pollCount === 12)  // ~1min
+            addMsg('bot', '⏳ Still connecting... Avg wait 15–30 min (Mon–Sat 9am–7pm IST). For urgent: WhatsApp +91-9441363687');
+          if (pollCount === 36)  // ~3min
+            addMsg('bot', '🙏 Thank you for your patience. Our team has been notified. You can also email **help@worksupport360.com** and we will respond within 4 hours.');
+        }
 
+        // Fetch agent replies
+        const mr = await api.get(`/support/tickets/${tid}/messages`);
+        const agentMsgs = (mr.data as any[]).filter(m => m.senderRole === 'agent');
         if (agentMsgs.length > 0) {
-          const latestAgent = agentMsgs[agentMsgs.length - 1];
-          if (latestAgent.id !== lastMsgId) {
-            lastMsgId = latestAgent.id;
-            // Only add if not already in UI
+          const last = agentMsgs[agentMsgs.length - 1];
+          if (last.id !== lastMsgId) {
+            lastMsgId = last.id;
             setMsgs(prev => {
-              const exists = prev.some(m => m.id === latestAgent.id);
-              if (exists) return prev;
-              const newMsg: Msg = {
-                id: latestAgent.id, from: 'agent',
-                text: latestAgent.content, time: new Date(latestAgent.sentAt),
-              };
+              if (prev.some(m => m.id === last.id)) return prev;
               if (!open) setUnread(u => u + 1);
-              return [...prev, newMsg];
+              return [...prev, { id: last.id, from: 'agent' as const, text: last.content, time: new Date(last.sentAt) }];
             });
             scroll();
           }
         }
 
-        if (status.status === 'resolved') {
+        // Resolved
+        if (s.status === 'resolved') {
           clearInterval(timer);
-          addMsg('bot', "✅ **Ticket resolved.** Hope we helped! Rate your experience below.");
+          setPollTimer(null);
+          currentStage = 'idle';
           setStage('idle');
+          addMsg('bot', '✅ **Ticket resolved!** Hope we helped. Feel free to start a new chat anytime. 🙏');
+          clearChatState();
         }
-      } catch { /* ignore polling errors */ }
+      } catch { /* ignore network errors */ }
     };
 
-    const timer = setInterval(poll, 5000); // poll every 5s
+    poll(); // immediate first check
+    const timer = setInterval(poll, 5000);
     setPollTimer(timer);
-    return () => clearInterval(timer);
-  }, [open, scroll, addMsg, stage]);
+  }, [open, scroll, addMsg, clearChatState]);
+
 
   // Cleanup
   useEffect(() => () => { if (pollTimer) clearInterval(pollTimer); }, [pollTimer]);
@@ -585,7 +614,7 @@ Now, ${BOT_FLOW.describe.text}`);
       {/* Chat window */}
       {open && (
         <div className="absolute bottom-16 right-0 flex flex-col bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden" id="ws-chat-popup"
-          style={{ width: 'min(360px, calc(100vw - 2rem))', height: 'min(480px, calc(100vh - 6rem))', animation: 'slideUp .3s cubic-bezier(.16,1,.3,1)' }}>
+          style={{ width: 320, height: 460, animation: 'slideUp .3s cubic-bezier(.16,1,.3,1)' }}>
 
           {/* Header */}
           <div className="shrink-0 px-4 py-3 flex items-center gap-3" style={{ background: 'linear-gradient(135deg,#0f172a,#1e3a5f)' }}>

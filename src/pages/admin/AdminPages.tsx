@@ -119,16 +119,35 @@ export const AdminProjects: React.FC = () => {
   });
   const freelancers = flData?.items ?? [];
 
+  // Fetch approved requests for smart client dropdown
+  const { data: reqData } = useQuery({
+    queryKey: ['requests-approved'],
+    queryFn: () => api.get('/requests?status=approved').then(r => r.data),
+  });
+  const approvedRequests = reqData ?? [];
+
   const [form, setForm] = useState({
     name: '', clientId: '', freelancerId: '', description: '',
     budgetType: 'hourly', currency: 'USD', hourlyRate: '', totalBudget: '', estimatedHours: '',
+    dailyHours: '8',
+    durationMonths: '1', monthlyBudget: '',
     startDate: '', endDate: '', timezone: 'IST', applyGst: false, gstRate: 18, bufferDays: '0',
-    skills: [] as string[], milestones: [] as { title: string; dueDate: string; amount: string }[],
+    // Payment schedule
+    advancePercent: '30', advanceAmount: '',
+    paymentSchedule: 'monthly',
+    paymentTermDays: '7',
+    milestones: [] as { title: string; dueDate: string; amount: string }[],
   });
 
   const handleCreate = async () => {
-    if (!form.name || !form.freelancerId || !form.totalBudget || !form.startDate || !form.endDate || !form.clientId) {
-      toast.error('Fill all required fields'); return;
+    if (!form.name || !form.freelancerId || !form.startDate || !form.endDate || !form.clientId) {
+      toast.error('Fill project name, client, expert, start and end dates'); return;
+    }
+    if (form.budgetType === 'fixed' && !form.totalBudget) {
+      toast.error('Total budget required for fixed-price projects'); return;
+    }
+    if (form.budgetType === 'hourly' && !form.hourlyRate) {
+      toast.error('Hourly rate required'); return;
     }
     await createProject.mutateAsync({
       name: form.name, clientId: form.clientId, freelancerId: form.freelancerId,
@@ -137,14 +156,13 @@ export const AdminProjects: React.FC = () => {
       estimatedHours: parseInt(form.estimatedHours || '0'),
       startDate: new Date(form.startDate).toISOString(), endDate: new Date(form.endDate).toISOString(),
       timezone: form.timezone, applyGst: form.applyGst, gstRate: form.gstRate,
-      bufferDays: form.bufferDays, skills: form.skills,
-      milestones: form.milestones.filter(m => m.title).map(m => ({
+      bufferDays: form.bufferDays, milestones: form.milestones.filter(m => m.title).map(m => ({
         title: m.title, description: '', amount: parseFloat(m.amount || '0'),
         dueDate: new Date(m.dueDate || form.endDate).toISOString(),
       })),
     });
     setShowCreate(false);
-    setForm({ name:'', clientId:'', freelancerId:'', description:'', budgetType:'hourly', currency:'USD', hourlyRate:'', totalBudget:'', estimatedHours:'', startDate:'', endDate:'', timezone:'IST', applyGst:false, gstRate:18, bufferDays:'0', skills:[], milestones:[] });
+    setForm({ name:'', clientId:'', freelancerId:'', description:'', budgetType:'hourly', currency:'USD', hourlyRate:'', totalBudget:'', estimatedHours:'', dailyHours:'8', durationMonths:'1', monthlyBudget:'', startDate:'', endDate:'', timezone:'IST', applyGst:false, gstRate:18, bufferDays:'0', advancePercent:'30', advanceAmount:'', paymentSchedule:'monthly', paymentTermDays:'7', milestones:[] });
   };
 
   const changeStatus = async (id: string, status: string) => {
@@ -153,7 +171,6 @@ export const AdminProjects: React.FC = () => {
     toast.success(`Project ${status}`);
   };
 
-  const skillOptions = ['React','Node.js','Python','AWS','DevOps','SQL','.NET','Docker','ML','Java','TypeScript','Go'];
 
   return (
     <div className="animate-fade-in space-y-5">
@@ -164,40 +181,288 @@ export const AdminProjects: React.FC = () => {
         </button>
       </div>
 
-      {/* ─── CREATE PROJECT MODAL ─── */}
+      {/* ─── CREATE PROJECT FULL SCREEN ─── */}
       {showCreate && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-start justify-center p-4 pt-8">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl my-4" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white rounded-t-2xl z-10">
+        <div style={{position:'fixed',inset:0,zIndex:50,background:'#f8fafc',overflowY:'auto',fontFamily:"'Inter',system-ui,sans-serif"}}>
+          <div style={{maxWidth:860,margin:'0 auto',padding:'0 24px 80px'}}>
+            {/* Header */}
+            <div style={{position:'sticky',top:0,background:'rgba(248,250,252,0.98)',backdropFilter:'blur(12px)',padding:'16px 0',marginBottom:24,borderBottom:'1px solid #f1f5f9',zIndex:10,display:'flex',alignItems:'center',justifyContent:'space-between'}}>
               <div>
-                <div className="font-black text-gray-900 text-lg">Create New Project</div>
-                <div className="text-xs text-gray-500 mt-0.5">Status: <strong>Pending Payment</strong> → auto-activates when client pays invoice</div>
+                <div style={{fontWeight:900,fontSize:22,color:'#0f172a',letterSpacing:'-0.03em'}}>Create New Project</div>
+                <div style={{fontSize:12,color:'#94a3b8',marginTop:2}}>Status will be <strong style={{color:'#d97706'}}>Pending Payment</strong> — activates when client pays the first invoice</div>
               </div>
-              <button onClick={() => setShowCreate(false)} className="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+              <button onClick={() => setShowCreate(false)} style={{display:'flex',alignItems:'center',gap:6,padding:'8px 16px',borderRadius:12,background:'#fff',border:'1.5px solid #e2e8f0',fontSize:13,fontWeight:700,color:'#374151',cursor:'pointer'}}>
+                ✕ Cancel
+              </button>
             </div>
-            <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
-              <div><label className={lbl}>Project name *</label><input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="e.g. React Dashboard — Phase 1" className={inp}/></div>
-
-              {/* Client ID */}
-              <div>
-                <label className={lbl}>Client ID * <span className="text-gray-400 font-normal normal-case">(copy from Admin → Requests page)</span></label>
-                <input value={form.clientId} onChange={e => setForm({...form, clientId: e.target.value})} placeholder="Client UUID from approved request" className={inp}/>
-                <div className="text-xs text-gray-400 mt-1">💡 Go to Requests page → find the approved request → copy Client ID shown there</div>
+            <div style={{display:'flex',flexDirection:'column',gap:20}}>
+              {/* Project name */}
+              <div style={{background:'#fff',border:'1px solid #f1f5f9',borderRadius:20,padding:'24px'}}>
+                <div style={{fontSize:13,fontWeight:800,color:'#0f172a',marginBottom:16,display:'flex',alignItems:'center',gap:8}}>📋 Basic Info</div>
+                <div><label className={lbl}>Project name *</label><input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="e.g. React Dashboard — Phase 1" className={inp}/></div>
               </div>
 
-              {/* Freelancer dropdown */}
-              <div>
-                <label className={lbl}>Freelancer * (verified only)</label>
-                <select value={form.freelancerId} onChange={e => setForm({...form, freelancerId: e.target.value})} className={inp}>
-                  <option value="">Select freelancer…</option>
-                  {freelancers.map((f: any) => (
-                    <option key={f.id} value={f.id}>{f.aliasName} — {f.currentRole} ({f.currency === 'INR' ? '₹' : '$'}{f.hourlyRate}/hr · {f.trustScore} trust)</option>
-                  ))}
-                </select>
+              {/* Client + Freelancer smart dropdowns */}
+              <div style={{background:'#fff',border:'1px solid #f1f5f9',borderRadius:20,padding:'24px'}}>
+                <div style={{fontSize:13,fontWeight:800,color:'#0f172a',marginBottom:4,display:'flex',alignItems:'center',gap:8}}>👥 Select Client & Expert</div>
+                <div style={{fontSize:12,color:'#64748b',marginBottom:16}}>Only showing clients from <strong>approved requests</strong> and freelancers who confirmed meeting availability.</div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+                  {/* Smart client dropdown */}
+                  <div>
+                    <label className={lbl}>Client * (from approved requests)</label>
+                    <select value={form.clientId} onChange={e => setForm({...form, clientId: e.target.value})} className={inp}>
+                      <option value="">Select client…</option>
+                      {(approvedRequests as any[]).filter((r:any,i:number,arr:any[])=>arr.findIndex((x:any)=>x.clientId===r.clientId)===i).map((r: any) => (
+                        <option key={r.clientId} value={r.clientId}>
+                          {r.clientName || r.clientEmail} — {r.projectTitle || r.title || 'Request'} ({new Date(r.createdAt||r.submittedAt||Date.now()).toLocaleDateString()})
+                        </option>
+                      ))}
+                      {(approvedRequests as any[]).length === 0 && <option disabled>No approved requests yet</option>}
+                    </select>
+                    {form.clientId && (() => {
+                      const sel = (approvedRequests as any[]).find((r:any)=>r.clientId===form.clientId);
+                      return sel ? <div style={{marginTop:6,fontSize:11,color:'#4f46e5',background:'#eff6ff',padding:'5px 10px',borderRadius:8}}>✅ {sel.clientName || sel.clientEmail} · {sel.projectTitle || 'Project request'}</div> : null;
+                    })()}
+                  </div>
+                  {/* Smart freelancer dropdown */}
+                  <div>
+                    <label className={lbl}>Expert/Freelancer * (from meetings)</label>
+                    <select value={form.freelancerId} onChange={e => setForm({...form, freelancerId: e.target.value})} className={inp}>
+                      <option value="">Select expert…</option>
+                      {freelancers.map((f: any) => (
+                        <option key={f.id} value={f.id}>
+                          {f.aliasName} — {f.currentRole} · {f.currency === 'INR' ? '₹' : '$'}{f.hourlyRate}/hr
+                        </option>
+                      ))}
+                    </select>
+                    {form.freelancerId && (() => {
+                      const sel = freelancers.find((f:any)=>f.id===form.freelancerId);
+                      return sel ? <div style={{marginTop:6,fontSize:11,color:'#059669',background:'#f0fdf4',padding:'5px 10px',borderRadius:8}}>✅ {sel.aliasName} · Trust {sel.trustScore}/100</div> : null;
+                    })()}
+                  </div>
+                </div>
               </div>
 
-              {/* Budget type & currency */}
+            </div>
+            {/* Budget section */}
+            <div style={{background:'#fff',border:'1px solid #f1f5f9',borderRadius:20,padding:'24px'}}>
+              <div style={{fontSize:13,fontWeight:800,color:'#0f172a',marginBottom:16,display:'flex',alignItems:'center',gap:8}}>💰 Budget & Timeline</div>
+            </div>
+            {/* ═══ BUDGET & TIMELINE ═══ */}
+            <div style={{background:'#fff',border:'1px solid #f1f5f9',borderRadius:20,padding:'24px'}}>
+              <div style={{fontSize:13,fontWeight:800,color:'#0f172a',marginBottom:18,display:'flex',alignItems:'center',gap:8}}>💰 Budget & Timeline</div>
+
+              {/* Budget type + currency row */}
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
+                <div>
+                  <label className={lbl}>Budget type *</label>
+                  <div style={{display:'flex',gap:8}}>
+                    {[['hourly','⏱ Hourly rate'],['fixed','📦 Fixed price']].map(([v,l])=>(
+                      <button key={v} type="button" onClick={()=>setForm({...form,budgetType:v})}
+                        style={{flex:1,padding:'10px 0',borderRadius:12,border:`2px solid ${form.budgetType===v?'#4f46e5':'#e2e8f0'}`,background:form.budgetType===v?'#eff6ff':'#fff',color:form.budgetType===v?'#4338ca':'#64748b',fontSize:12,fontWeight:700,cursor:'pointer',transition:'all .15s'}}>
+                        {l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className={lbl}>Currency</label>
+                  <select value={form.currency} onChange={e=>setForm({...form,currency:e.target.value})} className={inp}>
+                    <option>USD</option><option>INR</option><option>EUR</option><option>GBP</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* ── HOURLY fields ── */}
+              {form.budgetType==='hourly'&&(
+                <div style={{background:'#f8fafc',border:'1px solid #f1f5f9',borderRadius:16,padding:'16px',marginBottom:16}}>
+                  <div style={{fontSize:11,fontWeight:800,color:'#64748b',letterSpacing:'0.06em',marginBottom:12}}>HOURLY RATE SETTINGS</div>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12}}>
+                    <div>
+                      <label className={lbl}>Hourly rate ({form.currency==='INR'?'₹':'$'}) *</label>
+                      <input type="number" value={form.hourlyRate} onChange={e=>setForm({...form,hourlyRate:e.target.value})} placeholder="35" className={inp}/>
+                    </div>
+                    <div>
+                      <label className={lbl}>Daily hours</label>
+                      <select value={form.dailyHours} onChange={e=>setForm({...form,dailyHours:e.target.value})} className={inp}>
+                        {['2','3','4','6','8'].map(h=><option key={h}>{h}h/day</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={lbl}>Est. total hours (optional)</label>
+                      <input type="number" value={form.estimatedHours} onChange={e=>setForm({...form,estimatedHours:e.target.value})} placeholder="160" className={inp}/>
+                    </div>
+                  </div>
+                  {form.hourlyRate&&form.estimatedHours&&(
+                    <div style={{marginTop:12,padding:'8px 12px',background:'#eff6ff',borderRadius:10,fontSize:12,color:'#4338ca',fontWeight:600}}>
+                      💡 Estimated total: {form.currency==='INR'?'₹':'$'}{(parseFloat(form.hourlyRate||'0')*parseInt(form.estimatedHours||'0')).toLocaleString()} ({form.estimatedHours} hrs × {form.currency==='INR'?'₹':'$'}{form.hourlyRate}/hr)
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── FIXED fields ── */}
+              {form.budgetType==='fixed'&&(
+                <div style={{background:'#f8fafc',border:'1px solid #f1f5f9',borderRadius:16,padding:'16px',marginBottom:16}}>
+                  <div style={{fontSize:11,fontWeight:800,color:'#64748b',letterSpacing:'0.06em',marginBottom:12}}>FIXED PRICE SETTINGS</div>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12}}>
+                    <div>
+                      <label className={lbl}>Total fixed budget ({form.currency==='INR'?'₹':'$'}) *</label>
+                      <input type="number" value={form.totalBudget} onChange={e=>setForm({...form,totalBudget:e.target.value})} placeholder="10000" className={inp}/>
+                    </div>
+                    <div>
+                      <label className={lbl}>Duration (months) *</label>
+                      <select value={form.durationMonths} onChange={e=>setForm({...form,durationMonths:e.target.value})} className={inp}>
+                        {['1','2','3','4','6','9','12'].map(m=><option key={m} value={m}>{m} month{m!=='1'?'s':''}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={lbl}>Monthly billing</label>
+                      <input type="number" value={form.monthlyBudget||String(form.totalBudget?Math.round(parseFloat(form.totalBudget)/parseInt(form.durationMonths)):'')} onChange={e=>setForm({...form,monthlyBudget:e.target.value})} placeholder={form.totalBudget?String(Math.round(parseFloat(form.totalBudget)/parseInt(form.durationMonths))):''} className={inp}/>
+                    </div>
+                  </div>
+                  {form.totalBudget&&form.durationMonths&&(
+                    <div style={{marginTop:12,padding:'8px 12px',background:'#f0fdf4',borderRadius:10,fontSize:12,color:'#15803d',fontWeight:600}}>
+                      💡 {form.durationMonths} months × {form.currency==='INR'?'₹':'$'}{Math.round(parseFloat(form.totalBudget)/parseInt(form.durationMonths)).toLocaleString()}/month = {form.currency==='INR'?'₹':'$'}{parseFloat(form.totalBudget).toLocaleString()} total
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── Date range ── */}
+              <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:16}}>
+                <div><label className={lbl}>Start date *</label><input type="date" value={form.startDate} onChange={e=>setForm({...form,startDate:e.target.value})} className={inp}/></div>
+                <div><label className={lbl}>End date *</label><input type="date" value={form.endDate} onChange={e=>setForm({...form,endDate:e.target.value})} className={inp}/></div>
+                <div><label className={lbl}>Buffer days</label><input type="number" value={form.bufferDays} onChange={e=>setForm({...form,bufferDays:e.target.value})} placeholder="5" className={inp}/></div>
+              </div>
+
+              {/* GST */}
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:12}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:700,color:'#92400e'}}>Apply GST (18%)</div>
+                  <div style={{fontSize:11,color:'#b45309'}}>For Indian clients — GST-compliant invoice generated</div>
+                </div>
+                <button type="button" onClick={()=>setForm({...form,applyGst:!form.applyGst})}
+                  style={{width:44,height:24,borderRadius:12,background:form.applyGst?'#f59e0b':'#e2e8f0',border:'none',cursor:'pointer',position:'relative',transition:'background .2s'}}>
+                  <div style={{width:18,height:18,borderRadius:'50%',background:'#fff',position:'absolute',top:3,left:form.applyGst?23:3,transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,0.2)'}}/>
+                </button>
+              </div>
+            </div>
+
+            {/* ═══ PAYMENT SCHEDULE ═══ */}
+            <div style={{background:'#fff',border:'1px solid #f1f5f9',borderRadius:20,padding:'24px'}}>
+              <div style={{fontSize:13,fontWeight:800,color:'#0f172a',marginBottom:4,display:'flex',alignItems:'center',gap:8}}>💳 Payment Schedule</div>
+              <div style={{fontSize:12,color:'#64748b',marginBottom:18}}>Define how the client pays — admin controls visibility. Both parties see project only after admin approval.</div>
+
+              {/* Advance payment */}
+              <div style={{background:'#f0fdf4',border:'1px solid #86efac',borderRadius:14,padding:'16px',marginBottom:16}}>
+                <div style={{fontSize:12,fontWeight:800,color:'#15803d',marginBottom:12}}>⚡ Advance Payment</div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12}}>
+                  <div>
+                    <label className={lbl}>Advance % of total</label>
+                    <select value={form.advancePercent} onChange={e=>setForm({...form,advancePercent:e.target.value})} className={inp}>
+                      {['0','10','20','25','30','40','50'].map(p=><option key={p} value={p}>{p}% advance</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={lbl}>Advance amount ({form.currency==='INR'?'₹':'$'})</label>
+                    <input type="number" value={form.advanceAmount||
+                      (form.advancePercent&&form.totalBudget?String(Math.round(parseFloat(form.totalBudget)*parseInt(form.advancePercent)/100)):
+                       form.advancePercent&&form.hourlyRate&&form.estimatedHours?String(Math.round(parseFloat(form.hourlyRate)*parseInt(form.estimatedHours)*parseInt(form.advancePercent)/100)):'')
+                    } onChange={e=>setForm({...form,advanceAmount:e.target.value})} placeholder="Auto-calculated" className={inp}/>
+                  </div>
+                  <div>
+                    <label className={lbl}>When to collect advance</label>
+                    <select className={inp} defaultValue="before_start">
+                      <option value="before_start">Before project starts</option>
+                      <option value="on_approval">On admin approval</option>
+                      <option value="week1">End of week 1</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recurring payment */}
+              <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:14,padding:'16px'}}>
+                <div style={{fontSize:12,fontWeight:800,color:'#1d4ed8',marginBottom:12}}>📅 Recurring Payment Cycle</div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                  <div>
+                    <label className={lbl}>Payment frequency</label>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+                      {[['weekly','Weekly'],['biweekly','Bi-weekly'],['monthly','Monthly'],['milestone','On milestone']].map(([v,l])=>(
+                        <button key={v} type="button" onClick={()=>setForm({...form,paymentSchedule:v})}
+                          style={{padding:'8px 0',borderRadius:10,border:`2px solid ${form.paymentSchedule===v?'#3b82f6':'#e2e8f0'}`,background:form.paymentSchedule===v?'#eff6ff':'#fff',color:form.paymentSchedule===v?'#1d4ed8':'#64748b',fontSize:11,fontWeight:700,cursor:'pointer',transition:'all .15s'}}>
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className={lbl}>Payment due within (days)</label>
+                    <select value={form.paymentTermDays} onChange={e=>setForm({...form,paymentTermDays:e.target.value})} className={inp}>
+                      {['3','5','7','10','14','30'].map(d=><option key={d} value={d}>{d} days after invoice</option>)}
+                    </select>
+                    <div style={{fontSize:11,color:'#64748b',marginTop:5}}>Admin sends invoice → client pays within this period</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ═══ MILESTONES ═══ */}
+            <div style={{background:'#fff',border:'1px solid #f1f5f9',borderRadius:20,padding:'24px'}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
+                <div>
+                  <div style={{fontSize:13,fontWeight:800,color:'#0f172a',display:'flex',alignItems:'center',gap:8}}>🏁 Milestones (optional)</div>
+                  <div style={{fontSize:12,color:'#64748b',marginTop:2}}>Break the project into deliverables. Each milestone can trigger a payment.</div>
+                </div>
+                <button type="button" onClick={()=>setForm({...form,milestones:[...form.milestones,{title:'',dueDate:'',amount:''}]})}
+                  style={{padding:'7px 14px',borderRadius:10,background:'#f8fafc',border:'1.5px solid #e2e8f0',fontSize:12,fontWeight:700,color:'#374151',cursor:'pointer'}}>
+                  + Add milestone
+                </button>
+              </div>
+              {form.milestones.length===0&&<div style={{textAlign:'center',padding:'20px',fontSize:12,color:'#d1d5db'}}>No milestones added. Optional — add for phased delivery.</div>}
+              <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                {form.milestones.map((m,i)=>(
+                  <div key={i} style={{display:'grid',gridTemplateColumns:'1fr 140px 120px 32px',gap:8,alignItems:'flex-end'}}>
+                    <div><label className={lbl}>Milestone {i+1} title</label><input value={m.title} onChange={e=>{const ms=[...form.milestones];ms[i]={...ms[i],title:e.target.value};setForm({...form,milestones:ms});}} placeholder={`e.g. Phase ${i+1} delivery`} className={inp}/></div>
+                    <div><label className={lbl}>Due date</label><input type="date" value={m.dueDate} onChange={e=>{const ms=[...form.milestones];ms[i]={...ms[i],dueDate:e.target.value};setForm({...form,milestones:ms});}} className={inp}/></div>
+                    <div><label className={lbl}>Amount ({form.currency==='INR'?'₹':'$'})</label><input type="number" value={m.amount} onChange={e=>{const ms=[...form.milestones];ms[i]={...ms[i],amount:e.target.value};setForm({...form,milestones:ms});}} placeholder="2500" className={inp}/></div>
+                    <button type="button" onClick={()=>setForm({...form,milestones:form.milestones.filter((_,j)=>j!==i)})} style={{height:38,width:32,borderRadius:10,background:'#fef2f2',border:'1px solid #fecaca',color:'#dc2626',cursor:'pointer',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ═══ DESCRIPTION ═══ */}
+            <div style={{background:'#fff',border:'1px solid #f1f5f9',borderRadius:20,padding:'24px'}}>
+              <div style={{fontSize:13,fontWeight:800,color:'#0f172a',marginBottom:14,display:'flex',alignItems:'center',gap:8}}>📝 Description (optional)</div>
+              <textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} rows={3} placeholder="Project overview, tech stack, goals, special instructions for the expert…" style={{width:'100%',padding:'12px 14px',border:'1.5px solid #e2e8f0',borderRadius:14,fontSize:13,resize:'none',outline:'none',fontFamily:'inherit',transition:'border .15s'}} onFocus={e=>e.target.style.borderColor='#4f46e5'} onBlur={e=>e.target.style.borderColor='#e2e8f0'}/>
+            </div>
+
+            {/* ═══ ADMIN NOTE + SUBMIT ═══ */}
+            <div style={{background:'#fff',border:'1px solid #f1f5f9',borderRadius:20,padding:'24px'}}>
+              <div style={{background:'#f0fdf4',border:'1px solid #86efac',borderRadius:14,padding:'14px 16px',marginBottom:16,fontSize:12,color:'#15803d',lineHeight:1.7}}>
+                <strong>🔒 Admin-controlled visibility:</strong> After you create the project:
+                <ul style={{margin:'8px 0 0',paddingLeft:18,display:'flex',flexDirection:'column',gap:3}}>
+                  <li>Project is <strong>hidden from both client and freelancer</strong> until you approve</li>
+                  <li>You review project details → click <strong>"Approve & Notify"</strong></li>
+                  <li>Both parties get email + notification with project details</li>
+                  <li>Advance payment invoice sent to client automatically</li>
+                  <li>Project activates once advance is paid</li>
+                </ul>
+              </div>
+
+              {/* Submit */}
               <div className="grid grid-cols-2 gap-4">
+                <div><label className={lbl}>Project timezone</label>
+                  <select value={form.timezone} onChange={e=>setForm({...form,timezone:e.target.value})} className={inp}>
+                    {['IST','EST','PST','GMT','CET','SGT','JST','AEST'].map(tz=><option key={tz}>{tz}</option>)}
+                  </select>
+                </div>
+                <div/>
+              </div>
+
+
                 <div><label className={lbl}>Budget type *</label>
                   <div className="flex gap-2">
                     {[['hourly','Hourly'],['fixed','Fixed']].map(([v,l]) => (
@@ -249,47 +514,7 @@ export const AdminProjects: React.FC = () => {
                 </div>
               )}
 
-              <div><label className={lbl}>Description</label><textarea rows={2} value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="Project scope and requirements…" className={inp + " resize-none"}/></div>
 
-              <div>
-                <label className={lbl}>Skills required</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {skillOptions.map(s => (
-                    <button key={s} type="button" onClick={() => setForm(f => ({ ...f, skills: f.skills.includes(s) ? f.skills.filter(x => x !== s) : [...f.skills, s] }))}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${form.skills.includes(s) ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-200 text-gray-600 hover:border-indigo-300'}`}>{s}</button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className={lbl + " mb-0"}>Milestones (optional)</label>
-                  <button type="button" onClick={() => setForm(f => ({ ...f, milestones: [...f.milestones, { title: '', dueDate: '', amount: '' }] }))} className="text-xs text-indigo-600 font-bold hover:text-indigo-800">+ Add milestone</button>
-                </div>
-                {form.milestones.map((m, i) => (
-                  <div key={i} className="grid grid-cols-3 gap-2 mb-2">
-                    <input value={m.title} onChange={e => setForm(f => ({ ...f, milestones: f.milestones.map((x, j) => j === i ? { ...x, title: e.target.value } : x) }))} placeholder="Milestone title" className={inp}/>
-                    <input type="date" value={m.dueDate} onChange={e => setForm(f => ({ ...f, milestones: f.milestones.map((x, j) => j === i ? { ...x, dueDate: e.target.value } : x) }))} className={inp}/>
-                    <div className="flex gap-1">
-                      <input type="number" value={m.amount} onChange={e => setForm(f => ({ ...f, milestones: f.milestones.map((x, j) => j === i ? { ...x, amount: e.target.value } : x) }))} placeholder="Amount" className={inp + " flex-1"}/>
-                      <button type="button" onClick={() => setForm(f => ({ ...f, milestones: f.milestones.filter((_, j) => j !== i) }))} className="text-red-400 hover:text-red-600 px-2 text-lg">×</button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-xs text-indigo-700">
-                📋 <strong>After creation:</strong> Admin sends invoice to client → Client pays → Project activates automatically → Both parties notified via email + notification
-              </div>
-
-              <div className="flex gap-3">
-                <button type="button" onClick={() => setShowCreate(false)} className="flex-1 border border-gray-200 text-gray-700 py-3 rounded-xl font-bold text-sm">Cancel</button>
-                <button type="button" onClick={handleCreate} disabled={createProject.isPending}
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-black text-sm disabled:opacity-50 flex items-center justify-center gap-2">
-                  {createProject.isPending ? <><Loader2 size={14} className="animate-spin"/>Creating…</> : 'Create project →'}
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       )}
@@ -351,11 +576,10 @@ export const AdminProjects: React.FC = () => {
                     {proj.bufferDays && proj.bufferDays !== '0' && <span>⏳ {proj.bufferDays}d buffer</span>}
                   </div>
 
-                  {/* Pending payment alert */}
+                  {/* Admin action for pending payment - no scary warning to client/freelancer */}
                   {proj.status === 'pending_payment' && (
-                    <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 flex items-center gap-2 mb-3">
-                      <AlertCircle size={15} className="text-red-500"/>
-                      <span className="text-sm font-bold text-red-700">⚠ Awaiting client payment of {curr}{proj.pendingAmount?.toLocaleString()} to activate project</span>
+                    <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-2.5 flex items-center gap-2 mb-3">
+                      <span className="text-xs font-bold text-amber-700">🔒 Admin only: Pending approval · Not visible to client or freelancer yet</span>
                     </div>
                   )}
 
