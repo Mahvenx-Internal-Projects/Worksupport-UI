@@ -447,55 +447,72 @@ input::placeholder,textarea::placeholder{color:#94a3b8}
       </nav>
 
       {/* ═══ HERO ═══ */}
-      <section style={{paddingTop:64,background:'#fff',position:'relative',overflow:'hidden'}}>
-        {/* Photo background strip */}
-        <div style={{position:'absolute',right:0,top:64,width:'45%',height:'100%',zIndex:0,overflow:'hidden'}}>
-          {PHOTOS.map((p,i)=>(
-            <img key={i} src={p} alt="" style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',opacity:i===slide?0.18:0,transition:'opacity 1.2s'}}/>
-          ))}
-          <div style={{position:'absolute',inset:0,background:'linear-gradient(90deg,#fff 0%,transparent 40%)'}}/>
+      <section style={{paddingTop:64,background:'#fff',position:'relative',overflow:'hidden',minHeight:'92vh',display:'flex',flexDirection:'column'}}>
+        {/* Background layers */}
+        <div style={{position:'absolute',inset:0,zIndex:0}}>
+          {/* Gradient mesh */}
+          <div style={{position:'absolute',inset:0,background:'linear-gradient(135deg,#ffffff 0%,#f0f4ff 40%,#fff5f0 100%)'}}/>
+          {/* Large decorative circle top-right */}
+          <div style={{position:'absolute',top:-160,right:-160,width:600,height:600,borderRadius:'50%',background:'radial-gradient(circle,rgba(99,102,241,0.08) 0%,transparent 70%)'}}/>
+          {/* Orange circle bottom-left */}
+          <div style={{position:'absolute',bottom:-120,left:-80,width:500,height:500,borderRadius:'50%',background:'radial-gradient(circle,rgba(249,115,22,0.08) 0%,transparent 70%)'}}/>
+          {/* Dot grid */}
+          <div style={{position:'absolute',inset:0,backgroundImage:'radial-gradient(circle,rgba(99,102,241,0.12) 1.5px,transparent 1.5px)',backgroundSize:'32px 32px',opacity:.5}}/>
         </div>
 
-        <div style={{maxWidth:1320,margin:'0 auto',padding:'72px 32px 60px',position:'relative',zIndex:1}}>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 500px',gap:64,alignItems:'center'}}>
+        <div style={{maxWidth:1320,width:'100%',margin:'0 auto',padding:'80px 32px 60px',position:'relative',zIndex:1,flex:1,display:'flex',flexDirection:'column',justifyContent:'center'}}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 480px',gap:64,alignItems:'center'}}>
+
+            {/* LEFT */}
             <div>
-              <div className="fu" style={{display:'inline-flex',alignItems:'center',gap:8,background:'#eff6ff',border:'1.5px solid #bfdbfe',borderRadius:100,padding:'7px 18px',marginBottom:28}}>
-                <span style={{width:8,height:8,borderRadius:'50%',background:'#4f46e5',display:'inline-block',boxShadow:'0 0 10px rgba(79,70,229,0.6)'}}/>
-                <span style={{fontSize:12,fontWeight:700,color:'#3730a3',letterSpacing:'0.04em'}}>India's #1 identity-safe tech talent platform</span>
+              {/* Badge */}
+              <div className="fade-up" style={{display:'inline-flex',alignItems:'center',gap:8,background:'rgba(99,102,241,0.08)',border:'1.5px solid rgba(99,102,241,0.2)',borderRadius:100,padding:'7px 18px',marginBottom:24}}>
+                <span style={{width:8,height:8,borderRadius:'50%',background:'#6366f1',display:'inline-block',boxShadow:'0 0 10px rgba(99,102,241,0.6)'}}/>
+                <span style={{fontSize:12,fontWeight:700,color:'#4f46e5',letterSpacing:'0.04em'}}>India's #1 identity-safe tech talent platform</span>
               </div>
 
-              <h1 className="fu" style={{animationDelay:'.08s',fontSize:'clamp(2.8rem,4.5vw,4rem)',fontWeight:900,lineHeight:1.06,letterSpacing:'-0.04em',color:'#0f172a',margin:'0 0 22px'}}>
+              {/* Headline */}
+              <h1 className="fade-up" style={{animationDelay:'.08s',fontSize:'clamp(2.8rem,5vw,4.5rem)',fontWeight:900,lineHeight:1.05,letterSpacing:'-0.04em',color:'#0f172a',margin:'0 0 20px',maxWidth:580}}>
                 Hire verified MNC<br/>
-                <span style={{background:'linear-gradient(135deg,#f97316,#ef4444)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text',display:'inline-block'}}>
-                  engineers
-                </span>{' '}
-                <span style={{color:'#0f172a'}}>in</span>{' '}
-                <span style={{color:'#f97316'}}>4 hours</span>
+                <span style={{display:'inline-block',position:'relative'}}>
+                  <span style={{background:'linear-gradient(135deg,#f97316 0%,#ef4444 50%)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}}>engineers</span>
+                  {' '}
+                  <span style={{color:'#0f172a'}}>in </span>
+                  <span style={{
+                    display:'inline-block',
+                    background:'linear-gradient(135deg,#f97316,#ef4444)',
+                    color:'white',
+                    padding:'2px 18px 6px',
+                    borderRadius:14,
+                    letterSpacing:'-0.02em',
+                    boxShadow:'0 8px 24px rgba(249,115,22,0.35)',
+                  }}>4 hours</span>
+                </span>
               </h1>
 
-              <p className="fu" style={{animationDelay:'.15s',fontSize:18,color:'#64748b',lineHeight:1.7,marginBottom:36,maxWidth:520}}>
+              <p className="fade-up" style={{animationDelay:'.15s',fontSize:18,color:'#64748b',lineHeight:1.75,marginBottom:36,maxWidth:500}}>
                 Senior engineers from{' '}
                 <strong style={{color:'#1e293b',fontWeight:700}}>Infosys, TCS, Wipro, HCL</strong>{' '}
                 work under a privacy alias. Employer never notified. Enterprise talent, freelance speed.
               </p>
 
               {/* Search */}
-              <div className="fu" style={{animationDelay:'.2s',display:'flex',background:'#fff',borderRadius:18,boxShadow:'0 4px 32px rgba(0,0,0,0.12),0 0 0 1.5px #e2e8f0',marginBottom:22,maxWidth:540,overflow:'hidden'}}>
+              <div className="fade-up" style={{animationDelay:'.2s',display:'flex',background:'#fff',borderRadius:20,boxShadow:'0 4px 40px rgba(0,0,0,0.1),0 0 0 1.5px rgba(0,0,0,0.06)',marginBottom:22,maxWidth:540,overflow:'hidden'}}>
                 <div style={{flex:1,display:'flex',alignItems:'center',gap:12,padding:'0 22px'}}>
                   <Search size={18} style={{color:'#94a3b8',flexShrink:0}}/>
                   <input value={hs} onChange={ev=>sHs(ev.target.value)} onKeyDown={ev=>ev.key==='Enter'&&go()} placeholder='"React developer", "Python ML", "DevOps AWS"…' style={{flex:1,border:'none',outline:'none',fontSize:15,padding:'18px 0',background:'transparent',color:'#0f172a'}}/>
                 </div>
-                <button onClick={go} style={{padding:'0 32px',background:'linear-gradient(135deg,#f97316,#ef4444)',color:'#fff',border:'none',fontSize:15,fontWeight:800,cursor:'pointer',flexShrink:0,transition:'opacity .2s'}}
+                <button onClick={go} style={{padding:'0 32px',background:'linear-gradient(135deg,#f97316,#ef4444)',color:'#fff',border:'none',fontSize:15,fontWeight:800,cursor:'pointer',flexShrink:0,transition:'opacity .15s',letterSpacing:'-0.01em'}}
                   onMouseEnter={ev=>(ev.currentTarget as HTMLElement).style.opacity='.85'} onMouseLeave={ev=>(ev.currentTarget as HTMLElement).style.opacity='1'}>
                   Search
                 </button>
               </div>
 
               {/* Skill chips */}
-              <div className="fu" style={{animationDelay:'.26s',display:'flex',flexWrap:'wrap',gap:8,marginBottom:40}}>
+              <div className="fade-up" style={{animationDelay:'.26s',display:'flex',flexWrap:'wrap',gap:8,marginBottom:40}}>
                 <span style={{fontSize:12,color:'#94a3b8',fontWeight:600,alignSelf:'center'}}>Popular:</span>
                 {['React','Python','Node.js','AWS','Docker','TypeScript','ML','K8s'].map(s=>(
-                  <button key={s} onClick={()=>{sSf(s);sHs(s);document.getElementById('experts')?.scrollIntoView({behavior:'smooth'});}} style={{padding:'7px 16px',borderRadius:100,border:'1.5px solid #e2e8f0',background:'#fff',fontSize:12,fontWeight:600,color:'#475569',cursor:'pointer',transition:'all .15s'}}
+                  <button key={s} onClick={()=>{sSf(s);sHs(s);document.getElementById('experts')?.scrollIntoView({behavior:'smooth'});}} style={{padding:'7px 16px',borderRadius:100,border:'1.5px solid #e2e8f0',background:'#fff',fontSize:12,fontWeight:600,color:'#475569',cursor:'pointer',transition:'all .15s',boxShadow:'0 1px 4px rgba(0,0,0,0.04)'}}
                     onMouseEnter={ev=>{(ev.target as HTMLElement).style.borderColor='#f97316';(ev.target as HTMLElement).style.color='#f97316';(ev.target as HTMLElement).style.background='#fff7ed';}}
                     onMouseLeave={ev=>{(ev.target as HTMLElement).style.borderColor='#e2e8f0';(ev.target as HTMLElement).style.color='#475569';(ev.target as HTMLElement).style.background='#fff';}}>
                     {s}
@@ -504,15 +521,15 @@ input::placeholder,textarea::placeholder{color:#94a3b8}
               </div>
 
               {/* CTAs */}
-              <div className="fu" style={{animationDelay:'.3s',display:'flex',flexWrap:'wrap',gap:14}}>
+              <div className="fade-up" style={{animationDelay:'.3s',display:'flex',flexWrap:'wrap',gap:14,marginBottom:40}}>
                 {isAuthenticated
                   ?<button onClick={()=>navigate(dash)} style={{display:'flex',alignItems:'center',gap:10,padding:'16px 36px',borderRadius:18,background:'linear-gradient(135deg,#f97316,#ef4444)',color:'#fff',border:'none',fontSize:16,fontWeight:800,cursor:'pointer',boxShadow:'0 8px 28px rgba(249,115,22,0.38)',transition:'all .2s'}}
                     onMouseEnter={ev=>{(ev.currentTarget as HTMLElement).style.transform='translateY(-2px)';}} onMouseLeave={ev=>{(ev.currentTarget as HTMLElement).style.transform='none';}}>
                     <LayoutDashboard size={18}/> My Dashboard
                   </button>
                   :<>
-                    <button onClick={()=>navigate('/register')} style={{display:'flex',alignItems:'center',gap:10,padding:'16px 36px',borderRadius:18,background:'linear-gradient(135deg,#0f172a,#1e3a5f)',color:'#fff',border:'none',fontSize:16,fontWeight:800,cursor:'pointer',boxShadow:'0 8px 28px rgba(15,23,42,0.28)',transition:'all .2s'}}
-                      onMouseEnter={ev=>{(ev.currentTarget as HTMLElement).style.transform='translateY(-2px)';(ev.currentTarget as HTMLElement).style.boxShadow='0 14px 40px rgba(15,23,42,0.35)';}} onMouseLeave={ev=>{(ev.currentTarget as HTMLElement).style.transform='none';(ev.currentTarget as HTMLElement).style.boxShadow='0 8px 28px rgba(15,23,42,0.28)';}}>
+                    <button onClick={()=>navigate('/register')} style={{display:'flex',alignItems:'center',gap:10,padding:'16px 36px',borderRadius:18,background:'linear-gradient(135deg,#0f172a,#1e3a5f)',color:'#fff',border:'none',fontSize:16,fontWeight:800,cursor:'pointer',boxShadow:'0 8px 28px rgba(15,23,42,0.25)',transition:'all .2s'}}
+                      onMouseEnter={ev=>{(ev.currentTarget as HTMLElement).style.transform='translateY(-2px)';}} onMouseLeave={ev=>{(ev.currentTarget as HTMLElement).style.transform='none';}}>
                       Start hiring free <ArrowRight size={18}/>
                     </button>
                     <a href="#quick" style={{display:'flex',alignItems:'center',gap:10,padding:'16px 30px',borderRadius:18,border:'2px solid #e2e8f0',background:'#fff',color:'#374151',fontSize:16,fontWeight:700,textDecoration:'none',transition:'all .15s'}}
@@ -524,23 +541,25 @@ input::placeholder,textarea::placeholder{color:#94a3b8}
               </div>
 
               {/* Social proof */}
-              <div className="fu" style={{animationDelay:'.36s',display:'flex',alignItems:'center',gap:16,marginTop:32}}>
+              <div className="fade-up" style={{animationDelay:'.36s',display:'flex',alignItems:'center',gap:16}}>
                 <div style={{display:'flex'}}>
-                  {['I','T','W','H'].map((l,i)=>(
-                    <div key={i} style={{width:32,height:32,borderRadius:'50%',background:`hsl(${210+i*30},70%,55%)`,border:'2.5px solid #fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'#fff',marginLeft:i>0?-8:0}}>{l}</div>
+                  {['4f46e5','0891b2','059669','d97706'].map((c,i)=>(
+                    <div key={i} style={{width:32,height:32,borderRadius:'50%',background:`#${c}`,border:'2.5px solid #fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,color:'#fff',marginLeft:i>0?-8:0,boxShadow:'0 2px 6px rgba(0,0,0,0.15)'}}>
+                      {['I','T','W','H'][i]}
+                    </div>
                   ))}
                 </div>
                 <div>
-                  <div style={{display:'flex',gap:1,marginBottom:2}}>{[1,2,3,4,5].map(i=><span key={i} style={{color:'#f59e0b',fontSize:14}}>★</span>)}</div>
+                  <div style={{display:'flex',gap:1,marginBottom:2}}>{'★★★★★'.split('').map((s,i)=><span key={i} style={{color:'#f59e0b',fontSize:14}}>{s}</span>)}</div>
                   <div style={{fontSize:12,color:'#64748b'}}><strong style={{color:'#1e293b'}}>500+ companies</strong> hired via WorkSupport360</div>
                 </div>
               </div>
             </div>
 
-            {/* RIGHT — Floating cards */}
+            {/* RIGHT — floating cards */}
             <div style={{position:'relative',height:500,display:'flex',alignItems:'center',justifyContent:'center'}}>
-              {/* Main expert card */}
-              <div style={{position:'absolute',width:280,background:'#fff',borderRadius:24,boxShadow:'0 28px 80px rgba(0,0,0,0.16)',border:'1.5px solid #f1f5f9',padding:'22px',animation:'float1 5s ease-in-out infinite',zIndex:3}}>
+              {/* Main card */}
+              <div style={{position:'absolute',width:280,background:'#fff',borderRadius:24,boxShadow:'0 28px 80px rgba(0,0,0,0.14)',border:'1.5px solid #f1f5f9',padding:'22px',animation:'float1 5s ease-in-out infinite',zIndex:3}}>
                 <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:16}}>
                   <div style={{width:52,height:52,borderRadius:18,background:'linear-gradient(135deg,#4f46e5,#7c3aed)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,fontSize:20,color:'#fff',position:'relative'}}>
                     RS
@@ -549,50 +568,48 @@ input::placeholder,textarea::placeholder{color:#94a3b8}
                   <div style={{flex:1}}>
                     <div style={{fontWeight:800,fontSize:15,color:'#0f172a'}}>Rahul S.</div>
                     <div style={{fontSize:12,color:'#64748b'}}>Sr. React Developer</div>
-                    <div style={{display:'flex',alignItems:'center',gap:4,marginTop:3}}>
-                      <Stars r={4.9} s={10}/>
-                      <span style={{fontSize:11,fontWeight:700,color:'#374151'}}>4.9</span>
-                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:4,marginTop:3}}>{[1,2,3,4,5].map(i=><span key={i} style={{color:'#f59e0b',fontSize:10}}>★</span>)}<span style={{fontSize:11,fontWeight:700,color:'#374151',marginLeft:2}}>4.9</span></div>
                   </div>
                   <div style={{textAlign:'right'}}>
                     <div style={{fontWeight:900,fontSize:20,color:'#0f172a'}}>$35</div>
                     <div style={{fontSize:10,color:'#94a3b8'}}>/hr</div>
                   </div>
                 </div>
-                <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:16}}>
-                  {['React','Node.js','AWS'].map(s=><span key={s} style={{fontSize:11,fontWeight:700,padding:'4px 10px',borderRadius:8,background:'#eff6ff',color:'#4f46e5'}}>{s}</span>)}
+                <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14}}>
+                  {['React','Node.js','AWS'].map(s=><span key={s} style={{fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:8,background:'#eff6ff',color:'#4f46e5',border:'1px solid #c7d2fe'}}>{s}</span>)}
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
                   <button style={{padding:'10px',borderRadius:12,background:'linear-gradient(135deg,#f97316,#ef4444)',color:'#fff',border:'none',fontSize:12,fontWeight:700,cursor:'pointer'}}>⚡ Quick</button>
                   <button style={{padding:'10px',borderRadius:12,background:'linear-gradient(135deg,#4f46e5,#7c3aed)',color:'#fff',border:'none',fontSize:12,fontWeight:700,cursor:'pointer'}}>Hire →</button>
                 </div>
               </div>
-
-              {/* Card 2 */}
-              <div style={{position:'absolute',top:'5%',right:'-8%',width:200,background:'#fff',borderRadius:20,boxShadow:'0 16px 48px rgba(0,0,0,0.1)',border:'1.5px solid #f1f5f9',padding:'16px',animation:'float2 7s ease-in-out infinite',animationDelay:'1s',zIndex:2}}>
+              {/* Side card 1 */}
+              <div style={{position:'absolute',top:'5%',right:'-6%',width:195,background:'#fff',borderRadius:20,boxShadow:'0 16px 48px rgba(0,0,0,0.1)',border:'1.5px solid #f1f5f9',padding:'16px',animation:'float2 7s ease-in-out infinite',animationDelay:'1s',zIndex:2}}>
                 <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
-                  <div style={{width:40,height:40,borderRadius:14,background:'linear-gradient(135deg,#059669,#0891b2)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,fontSize:15,color:'#fff'}}>AM</div>
+                  <div style={{width:40,height:40,borderRadius:14,background:'linear-gradient(135deg,#059669,#0891b2)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,fontSize:15,color:'#fff',position:'relative'}}>
+                    AM
+                    <div style={{position:'absolute',bottom:-2,right:-2,width:12,height:12,borderRadius:'50%',background:'#22c55e',border:'2px solid #fff'}}/>
+                  </div>
                   <div><div style={{fontWeight:700,fontSize:13,color:'#0f172a'}}>Arjun M.</div><div style={{fontSize:11,color:'#64748b'}}>DevOps Lead</div></div>
                 </div>
                 <div style={{fontWeight:900,fontSize:16,color:'#0f172a',marginBottom:6}}>$28<span style={{fontSize:10,fontWeight:400,color:'#9ca3af'}}>/hr</span></div>
-                <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>{['K8s','Docker','AWS'].map(s=><span key={s} style={{fontSize:9,fontWeight:700,padding:'2px 8px',borderRadius:7,background:'#ecfdf5',color:'#059669'}}>{s}</span>)}</div>
+                <div style={{display:'flex',gap:5}}>{['K8s','Docker','AWS'].map(s=><span key={s} style={{fontSize:9,fontWeight:700,padding:'2px 8px',borderRadius:7,background:'#ecfdf5',color:'#059669',border:'1px solid #86efac'}}>{s}</span>)}</div>
               </div>
-
-              {/* Card 3 */}
-              <div style={{position:'absolute',bottom:'8%',left:'-5%',width:200,background:'#fff',borderRadius:20,boxShadow:'0 16px 48px rgba(0,0,0,0.1)',border:'1.5px solid #f1f5f9',padding:'16px',animation:'float3 6s ease-in-out infinite',animationDelay:'2s',zIndex:2}}>
+              {/* Side card 2 */}
+              <div style={{position:'absolute',bottom:'8%',left:'-3%',width:190,background:'#fff',borderRadius:20,boxShadow:'0 16px 48px rgba(0,0,0,0.1)',border:'1.5px solid #f1f5f9',padding:'16px',animation:'float3 6s ease-in-out infinite',animationDelay:'2s',zIndex:2}}>
                 <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
                   <div style={{width:40,height:40,borderRadius:14,background:'linear-gradient(135deg,#f59e0b,#d97706)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900,fontSize:15,color:'#fff'}}>PK</div>
                   <div><div style={{fontWeight:700,fontSize:13,color:'#0f172a'}}>Priya K.</div><div style={{fontSize:11,color:'#64748b'}}>ML Engineer</div></div>
                 </div>
                 <div style={{fontWeight:900,fontSize:16,color:'#0f172a',marginBottom:6}}>₹2800<span style={{fontSize:10,fontWeight:400,color:'#9ca3af'}}>/hr</span></div>
-                <div style={{display:'flex',gap:4}}>{['Python','ML'].map(s=><span key={s} style={{fontSize:9,fontWeight:700,padding:'2px 8px',borderRadius:7,background:'#fffbeb',color:'#d97706'}}>{s}</span>)}</div>
+                <div style={{display:'flex',gap:5}}>{['Python','ML'].map(s=><span key={s} style={{fontSize:9,fontWeight:700,padding:'2px 8px',borderRadius:7,background:'#fffbeb',color:'#d97706',border:'1px solid #fde68a'}}>{s}</span>)}</div>
               </div>
-
-              {/* Stat badges */}
+              {/* Stat badge top */}
               <div style={{position:'absolute',top:'18%',left:'2%',background:'#0f172a',color:'#fff',borderRadius:16,padding:'12px 18px',fontWeight:800,fontSize:14,boxShadow:'0 8px 28px rgba(15,23,42,0.35)',animation:'float2 8s ease-in-out infinite',zIndex:4}}>
                 <Cnt end={stats?.totalFreelancers??1240} suf="+"/> <span style={{fontSize:11,opacity:.6,fontWeight:400}}>experts</span>
               </div>
-              <div style={{position:'absolute',bottom:'22%',right:'-2%',background:'#22c55e',color:'#fff',borderRadius:16,padding:'12px 18px',fontWeight:800,fontSize:14,boxShadow:'0 8px 28px rgba(34,197,94,0.35)',animation:'float1 9s ease-in-out infinite',animationDelay:'1.5s',zIndex:4}}>
+              {/* Stat badge bottom */}
+              <div style={{position:'absolute',bottom:'22%',right:'-1%',background:'#22c55e',color:'#fff',borderRadius:16,padding:'12px 18px',fontWeight:800,fontSize:14,boxShadow:'0 8px 28px rgba(34,197,94,0.35)',animation:'float1 9s ease-in-out infinite',animationDelay:'1.5s',zIndex:4}}>
                 {stats?.avgRating??4.9}★ <span style={{fontSize:11,opacity:.85,fontWeight:400}}>rated</span>
               </div>
             </div>
