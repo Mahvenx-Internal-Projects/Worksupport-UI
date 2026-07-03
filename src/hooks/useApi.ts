@@ -215,7 +215,7 @@ export const useNotifications = () =>
   useQuery({ queryKey: ['notifs'], queryFn: () => notificationsApi.getAll().then(r => r.data), refetchInterval: 60_000 });
 
 export const useNotifCount = () =>
-  useQuery({ queryKey: ['notif-count'], queryFn: () => notificationsApi.getCount().then(r => r.data.count), refetchInterval: 30_000 });
+  useQuery({ queryKey: ['notif-count'], queryFn: () => notificationsApi.getCount().then((r: any) => r.data.count), refetchInterval: 30_000 });
 
 // ─── Standups ─────────────────────────────────────────────────
 export const useStandups = (projectId?: string) =>
@@ -246,16 +246,16 @@ export const useLeaderboard = () =>
   useQuery({ queryKey: ['leaderboard'], queryFn: () => adminApi.getLeaderboard().then(r => r.data) });
 
 export const useRevenueReport = () =>
-  useQuery({ queryKey: ['revenue-report'], queryFn: () => adminApi.getRevenue().then(r => r.data) });
+  useQuery({ queryKey: ['revenue-report'], queryFn: () => adminApi.getRevenue().then((r: any) => r.data) });
 
 export const useRevenueBreakdown = () =>
-  useQuery({ queryKey: ['revenue-breakdown'], queryFn: () => adminApi.getBreakdown().then(r => r.data) });
+  useQuery({ queryKey: ['revenue-breakdown'], queryFn: () => adminApi.getBreakdown().then((r: any) => r.data) });
 
 export const useAttendanceLogs = (p?: any) =>
-  useQuery({ queryKey: ['attendance', p], queryFn: () => adminApi.getAttendance(p).then(r => r.data) });
+  useQuery({ queryKey: ['attendance', p], queryFn: () => adminApi.getAttendance(p).then((r: any) => r.data) });
 
 export const usePendingPayouts = () =>
-  useQuery({ queryKey: ['pending-payouts'], queryFn: () => adminApi.getPendingPayouts().then(r => r.data) });
+  useQuery({ queryKey: ['pending-payouts'], queryFn: () => adminApi.getPendingPayouts().then((r: any) => r.data) });
 
 export const useVerifyFreelancer = () => {
   const qc = useQueryClient();

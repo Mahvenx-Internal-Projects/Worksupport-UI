@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import RolePickerModal from '../../components/RolePickerModal';
 import { useAuthStore } from '../../store/authStore';
 import {
   ArrowLeft, ArrowRight, Check, Eye, EyeOff,
@@ -17,9 +18,9 @@ const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { register } = useAuthStore();
-
   const defaultRole = (searchParams.get('role') as Role) || 'client';
   const [role, setRole] = useState<Role>(defaultRole);
+  const [roleReady, setRoleReady] = useState<boolean>(!!searchParams.get('role'));
   const [step, setStep] = useState(0);
   const [showPass, setShowPass] = useState(false);
   const [agreed, setAgreed] = useState(false);
@@ -36,6 +37,13 @@ const RegisterPage: React.FC = () => {
   const [availability, setAvailability] = useState(
     ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => ({ day: d, enabled: ['Mon','Tue','Wed','Thu','Fri'].includes(d), start: '18:00', end: '22:00' }))
   );
+
+  // Scroll right panel to top on step change
+  useEffect(()=>{
+    const panel = document.getElementById('reg-right-panel');
+    if(panel) panel.scrollTo({top:0,behavior:'smooth'});
+    else window.scrollTo({top:0,behavior:'smooth'});
+  },[step]);
 
   const steps = role === 'freelancer'
     ? ['Account','Professional','Availability','Skills','Review']
@@ -70,7 +78,12 @@ const RegisterPage: React.FC = () => {
         timezone: role === 'freelancer' ? form.timezone : undefined,
         bio: role === 'freelancer' ? form.bio : undefined,
         skills: role === 'freelancer' ? selectedSkills : undefined,
-        availability: role === 'freelancer' ? availability.filter(a => a.enabled) : undefined,
+        availability: role === 'freelancer' ? availability.filter(a => a.enabled).map(a => ({
+          dayOfWeek:   a.day,
+          isAvailable: a.enabled,
+          startTime:   a.start,
+          endTime:     a.end,
+        })) : undefined,
       } as any);
       const enc = encodeURIComponent(form.email);
       navigate(`/login?registered=true&email=${enc}&role=${role}`);
@@ -90,6 +103,10 @@ const RegisterPage: React.FC = () => {
         .fu { animation: fadeUp .5s cubic-bezier(.16,1,.3,1) both; }
         ::-webkit-scrollbar { width: 4px } ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); border-radius: 2px }
       `}</style>
+      {!roleReady && <RolePickerModal onPick={(nextRole) => {
+        setRole(nextRole === 'Freelancer' ? 'freelancer' : 'client');
+        setRoleReady(true);
+      }} />}
 
       {/* ── LEFT PANEL — colorful gradient ── */}
       <div style={{
@@ -128,7 +145,7 @@ const RegisterPage: React.FC = () => {
               { i: '💰', t: 'Earn extra income', d: 'Payouts in 3 business days' },
               { i: '⚡', t: 'Quick 1-hr sessions', d: 'Get paid for your expertise' },
             ] : [
-              { i: '✅', t: '4-hour hiring', d: 'Expert on a call same day' },
+              { i: '✅', t: 'Fast Hiring', d: 'Expert on a call same day' },
               { i: '🛡️', t: 'Escrow protected', d: 'Pay only for approved work' },
               { i: '🔍', t: 'ID-verified experts', d: 'All from top MNC companies' },
             ]).map(f => (
@@ -174,19 +191,6 @@ const RegisterPage: React.FC = () => {
             style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#64748b', background: 'none', border: 'none', cursor: 'pointer' }}>
             <ArrowLeft size={15}/> {step > 0 ? 'Back' : 'Log in instead'}
           </button>
-          <div style={{ display: 'flex', gap: 8 }}>
-            {(['client','freelancer'] as Role[]).map(r => (
-              <button key={r} onClick={() => { setRole(r); setStep(0); }}
-                disabled={!!searchParams.get('role')}
-                style={{ padding: '6px 16px', borderRadius: 100, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: '1.5px solid', textTransform: 'capitalize', transition: 'all .15s',
-                  background: role === r ? '#0f172a' : '#fff',
-                  color: role === r ? '#fff' : '#64748b',
-                  borderColor: role === r ? '#0f172a' : '#e2e8f0',
-                }}>
-                {r === 'client' ? '🏢 Client' : '🧑‍💻 Freelancer'}
-              </button>
-            ))}
-          </div>
           <div style={{ fontSize: 12, color: '#94a3b8' }}>Step {step + 1} of {steps.length}</div>
         </div>
 

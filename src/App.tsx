@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { Toaster } from 'react-hot-toast';
@@ -19,9 +19,18 @@ import AdminMeetings from './pages/admin/AdminMeetings';
 import { AdminProjects, AdminTimesheets, AdminInvoices, AdminPayments, AdminFreelancers, AdminClients, AdminLeaderboard, AdminReports, AdminAttendance } from './pages/admin/AdminPages';
 import AgentPortal from './pages/agent/AgentPortal';
 import ExpertPage from './pages/public/ExpertPage';
+import PostRequirement from './pages/client/PostRequirement';
 import { FreelancerDashboard, FreelancerAssignments, FreelancerTimesheets, FreelancerMeetings, FreelancerEarnings, FreelancerProfile, FreelancerStandups } from './pages/freelancer/FreelancerPages';
 import CompleteProfilePage from './pages/freelancer/CompleteProfilePage';
 import { ClientDashboard, ClientBrowse, ClientProjects, ClientTimesheets, ClientInvoices, ClientFeedback } from './pages/client/ClientPages';
+
+// ── Scroll to top on every route change ───────────────────────
+const ScrollToTop: React.FC = () => {
+  const { pathname } = useLocation();
+  React.useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior }); }, [pathname]);
+  return null;
+};
+
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30000 } } });
 
@@ -104,6 +113,7 @@ function App() {
             <Route path="/freelancer/complete-profile" element={<Protected role="freelancer"><CompleteProfilePage/></Protected>}/>
 
             {/* Client */}
+            <Route path="/client/post-requirement" element={<Protected role="client"><PostRequirement/></Protected>}/>
             <Route path="/client" element={<Protected role="client"><ClientDashboard/></Protected>}/>
             <Route path="/client/browse" element={<Protected role="client"><ClientBrowse/></Protected>}/>
             <Route path="/client/projects" element={<Protected role="client"><ClientProjects/></Protected>}/>

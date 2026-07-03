@@ -27,7 +27,8 @@ const ExpertPage: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAuthStore();
   const [tab, setTab]     = useState<'about'|'skills'|'reviews'>('about');
-  const [view, setView]   = useState<'main'|'quick'|'hire'>('main');
+  const [searchParams] = useState(() => new URLSearchParams(window.location.search));
+  const [view, setView]   = useState<'main'|'quick'|'hire'|'interest'>(searchParams.get('action') === 'quick' ? 'quick' : 'main');
   const [topic, setTopic] = useState('');
   const [platform, setPlatform] = useState('zoom');
   const [rf, setRf] = useState({
@@ -36,6 +37,8 @@ const ExpertPage: React.FC = () => {
     preferredDateTime: '', description: '',
   });
 
+  const [interest, setInterest] = useState({ budget: '', budgetType: 'hourly', currency: 'USD', message: '' });
+  const [interestLoading, setInterestLoading] = useState(false);
   const bookQ   = useBookQuickSupport();
   const createReq = useCreateRequest();
 
@@ -269,10 +272,17 @@ const ExpertPage: React.FC = () => {
                     <Zap size={18}/> Quick 1-hr call
                   </button>
                   <button onClick={() => { if (!guard('hire')) return; setView('hire'); }}
-                    style={{ width: '100%', padding: '16px', borderRadius: 18, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#0f172a,#1e3a5f)', color: '#fff', fontSize: 15, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, boxShadow: '0 6px 20px rgba(15,23,42,0.25)', transition: 'all .2s' }}
+                    style={{ width: '100%', padding: '15px', borderRadius: 18, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#0f172a,#1e3a5f)', color: '#fff', fontSize: 14, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, boxShadow: '0 6px 20px rgba(15,23,42,0.25)', transition: 'all .2s' }}
                     onMouseEnter={e => (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'}
                     onMouseLeave={e => (e.currentTarget as HTMLElement).style.transform = 'none'}>
                     <Briefcase size={18}/> Hire for project
+                  </button>
+                  {/* Express Interest — softer CTA */}
+                  <button onClick={() => { if (!guard('interest' as any)) return; setView('interest'); }}
+                    style={{ width: '100%', padding: '12px', borderRadius: 16, border: '2px solid #e2e8f0', background: '#fff', color: '#374151', fontSize: 13, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, cursor: 'pointer', transition: 'all .15s' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#6366f1'; (e.currentTarget as HTMLElement).style.color = '#4f46e5'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0'; (e.currentTarget as HTMLElement).style.color = '#374151'; }}>
+                    ✋ Express interest &amp; share budget
                   </button>
                 </div>
               </div>
@@ -326,6 +336,102 @@ const ExpertPage: React.FC = () => {
                   style={{ width: '100%', padding: '15px', borderRadius: 16, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#f97316,#ef4444)', color: '#fff', fontSize: 14, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: bookQ.isPending ? 0.6 : 1, boxShadow: '0 6px 20px rgba(249,115,22,0.35)' }}>
                   {bookQ.isPending ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }}/>Booking…</> : <><Zap size={15}/>Confirm — joins in ~30 min</>}
                 </button>
+              </div>
+            </div>
+          )}
+
+          {view === 'interest' && (
+            <div style={{ background: '#fff', border: '1px solid #f1f5f9', borderRadius: 24, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.1)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', borderBottom: '1px solid #f1f5f9', background: '#f5f3ff' }}>
+                <button onClick={() => setView('main')} style={{ width: 32, height: 32, borderRadius: 10, background: '#fff', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <ArrowLeft size={14} style={{ color: '#64748b' }}/>
+                </button>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: '#4f46e5' }}>✋ Express interest</div>
+                  <div style={{ fontSize: 11, color: '#9ca3af' }}>Share your budget — admin will coordinate</div>
+                </div>
+              </div>
+              <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ background: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: 12, padding: '12px 14px', fontSize: 12, color: '#4338ca', lineHeight: 1.65 }}>
+                  <strong>How this works:</strong><br/>
+                  1. You share your budget here<br/>
+                  2. Admin reviews &amp; contacts you within 4 hours<br/>
+                  3. Admin notifies the expert with your offer<br/>
+                  4. If expert agrees → meeting scheduled
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 800, color: '#64748b', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>BUDGET TYPE</label>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {[['hourly','Hourly'],['fixed','Fixed']].map(([v,l]) => (
+                        <button key={v} onClick={() => setInterest(i => ({ ...i, budgetType: v }))}
+                          style={{ flex: 1, padding: '9px 0', borderRadius: 11, border: `2px solid ${interest.budgetType === v ? '#6366f1' : '#e2e8f0'}`, background: interest.budgetType === v ? '#eff6ff' : '#fff', color: interest.budgetType === v ? '#4338ca' : '#94a3b8', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 800, color: '#64748b', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>CURRENCY</label>
+                    <select value={interest.currency} onChange={e => setInterest(i => ({ ...i, currency: e.target.value }))} style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #e2e8f0', borderRadius: 11, fontSize: 13, outline: 'none', fontFamily: 'inherit', background: '#fff' }}>
+                      <option>USD</option><option>INR</option><option>EUR</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 800, color: '#64748b', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>
+                    YOUR BUDGET ({interest.budgetType === 'hourly' ? `${interest.currency}/hr` : `${interest.currency} total`})
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 13, fontWeight: 700, color: '#94a3b8' }}>{interest.currency === 'INR' ? '₹' : '$'}</span>
+                    <input type="number" value={interest.budget} onChange={e => setInterest(i => ({ ...i, budget: e.target.value }))}
+                      placeholder={expert.hourlyRate} style={{ width: '100%', padding: '11px 12px 11px 28px', border: '1.5px solid #e2e8f0', borderRadius: 12, fontSize: 14, fontWeight: 700, outline: 'none', fontFamily: 'inherit' }}
+                      onFocus={e => e.target.style.borderColor = '#6366f1'} onBlur={e => e.target.style.borderColor = '#e2e8f0'}/>
+                  </div>
+                  <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>Expert rate: {expert.currency === 'INR' ? '₹' : '$'}{expert.hourlyRate}/hr — you can negotiate</div>
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 800, color: '#64748b', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>MESSAGE TO ADMIN (optional)</label>
+                  <textarea rows={3} value={interest.message} onChange={e => setInterest(i => ({ ...i, message: e.target.value }))}
+                    placeholder="What do you need help with? Timeline? Team size? Any specific requirements..."
+                    style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e2e8f0', borderRadius: 12, fontSize: 13, resize: 'none', outline: 'none', fontFamily: 'inherit', background: '#fafafa' }}
+                    onFocus={e => e.target.style.borderColor = '#6366f1'} onBlur={e => e.target.style.borderColor = '#e2e8f0'}/>
+                </div>
+                <button onClick={async () => {
+                  if (!interest.budget) { toast.error('Please enter your budget'); return; }
+                  setInterestLoading(true);
+                  try {
+                    // First create a request, then express interest
+                    const { default: axiosLib } = await import('axios');
+                    const apiUrl = process.env.REACT_APP_API_URL || '';
+                    const token  = localStorage.getItem('accessToken');
+                    // Create a demo request first
+                    const reqRes = await axiosLib.post(`${apiUrl}/api/requests`, {
+                      freelancerId: expert.id, sessionType: 'consultation',
+                      preferredDateTime: new Date(Date.now() + 7 * 24 * 3600000).toISOString(),
+                      durationMinutes: 45,
+                      budgetMin: parseFloat(interest.budget) * 0.8,
+                      budgetMax: parseFloat(interest.budget),
+                      budgetType: interest.budgetType,
+                      currency: interest.currency,
+                      description: interest.message || `Interested in ${expert.aliasName} — offered ${interest.currency} ${interest.budget} (${interest.budgetType})`,
+                    }, { headers: { Authorization: `Bearer ${token}` } });
+                    // Then express interest
+                    await axiosLib.post(`${apiUrl}/api/requests/${reqRes.data.id}/express-interest`, {
+                      offeredBudget: parseFloat(interest.budget),
+                      budgetType: interest.budgetType,
+                      message: interest.message,
+                    }, { headers: { Authorization: `Bearer ${token}` } });
+                    toast.success('✅ Interest submitted! Admin will contact you within 4 hours.', { duration: 6000 });
+                    setView('main');
+                  } catch (err: any) {
+                    toast.error(err?.response?.data?.message || 'Failed to submit interest');
+                  } finally { setInterestLoading(false); }
+                }} disabled={interestLoading || !interest.budget}
+                  style={{ width: '100%', padding: '15px', borderRadius: 16, border: 'none', cursor: 'pointer', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', color: '#fff', fontSize: 14, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: (interestLoading || !interest.budget) ? 0.5 : 1, boxShadow: '0 6px 20px rgba(99,102,241,0.35)' }}>
+                  {interestLoading ? <><Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }}/>Submitting…</> : <>✋ Submit interest — admin contacts in 4 hrs</>}
+                </button>
+                <p style={{ textAlign: 'center', fontSize: 11, color: '#9ca3af', margin: 0 }}>No commitment · Admin mediates · You decide after meeting expert</p>
               </div>
             </div>
           )}
