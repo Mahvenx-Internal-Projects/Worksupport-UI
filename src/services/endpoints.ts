@@ -2,145 +2,138 @@ import { api } from './api';
 import { ENV } from '../config/env';
 import axios from 'axios';
 
-// Public (no auth) API calls use axios directly to avoid auth interceptor issues
 const pub = axios.create({ baseURL: `${ENV.API_URL}/api` });
 
-// ─── Auth ─────────────────────────────────────────────────────
 export const authApi = {
-  login: (email: string, password: string) => api.post('/auth/login', { email, password }),
-  googleSignIn: (idToken: string) => api.post('/auth/google', { idToken }),
-  register: (data: any) => api.post('/auth/register', data),
-  refresh: (refreshToken: string) => api.post('/auth/refresh', { refreshToken }),
-  logout: (refreshToken: string) => api.post('/auth/logout', { refreshToken }),
-  logoutAll: () => api.post('/auth/logout-all'),
-  me: () => api.get('/auth/me'),
+  login:       (email: string, password: string) => api.post('/auth/login', { email, password }),
+  googleSignIn:(idToken: string)                 => api.post('/auth/google', { idToken }),
+  register:    (data: any)                       => api.post('/auth/register', data),
+  refresh:     (refreshToken: string)            => api.post('/auth/refresh', { refreshToken }),
+  logout:      (refreshToken: string)            => api.post('/auth/logout', { refreshToken }),
+  me:          ()                                => api.get('/auth/me'),
+  completeProfile: (data: any)                   => api.post('/auth/complete-profile', data),
 };
 
-// ─── Public ───────────────────────────────────────────────────
 export const publicApi = {
-  getStats: () => pub.get('/public/stats'),
-  getFeaturedFreelancers: (params?: { page?: number; pageSize?: number; skill?: string }) =>
-    pub.get('/public/featured-freelancers', { params }),
-  getFaqs: (category?: string) => pub.get('/public/faqs', { params: category ? { category } : undefined }),
-  markFaqHelpful: (id: string) => pub.post(`/public/faqs/${id}/helpful`),
-  getPlans: () => pub.get('/public/plans'),
-  getSettings: () => pub.get('/public/settings'),
-  contact: (data: { name: string; email: string; reason: string; message: string }) =>
-    pub.post('/public/contact', data),
-  getRecentRequirements: (count = 6) =>
-    pub.get('/public/recent-requirements', { params: { count } }),
+  getStats:               ()           => pub.get('/public/stats'),
+  getFeaturedFreelancers: (p?: any)    => pub.get('/public/featured-freelancers', { params: p }),
+  getFaqs:                (cat?: string) => pub.get('/public/faqs', { params: cat ? { category: cat } : undefined }),
+  markFaqHelpful:         (id: string) => pub.post(`/public/faqs/${id}/helpful`),
+  getPlans:               ()           => pub.get('/public/plans'),
+  getSettings:            ()           => pub.get('/public/settings'),
+  contact:                (d: any)     => pub.post('/public/contact', d),
 };
 
-// ─── Freelancers ──────────────────────────────────────────────
 export const freelancerApi = {
-  search: (params?: any) => api.get('/freelancers', { params }),
-  getById: (id: string) => api.get(`/freelancers/${id}`),
-  getMe: () => api.get('/freelancers/me'),
-  getMyStats: () => api.get('/freelancers/me/stats'),
-  updateMe: (data: any) => api.put('/freelancers/me', data),
-  setAvailability: (isAvailable: boolean) => api.patch('/freelancers/me/availability', isAvailable),
+  search:          (p?: any)    => api.get('/freelancers', { params: p }),
+  getById:         (id: string) => api.get(`/freelancers/${id}`),
+  getMe:           ()           => api.get('/freelancers/me'),
+  getMyStats:      ()           => api.get('/freelancers/me/stats'),
+  updateMe:        (d: any)     => api.put('/freelancers/me', d),
+  setAvailability: (v: boolean) => api.patch('/freelancers/me/availability', v),
 };
 
-// ─── Quick Support ────────────────────────────────────────────
 export const quickSupportApi = {
-  getAvailable: (skill?: string) => pub.get('/quick-support/available', { params: skill ? { skill } : undefined }),
-  book: (data: any) => api.post('/quick-support/book', data),
+  getAvailable: (skill?: string) => pub.get('/public/quick-support/available', { params: skill ? { skill } : undefined }),
+  book:         (d: any)         => api.post('/public/quick-support/book', d),
 };
 
-// ─── Support ──────────────────────────────────────────────────
-export const supportApi = {
-  getTickets: () => api.get('/support/tickets'),
-  createTicket: (data: any) => api.post('/support/tickets', data),
-  getMessages: (id: string) => api.get(`/support/tickets/${id}/messages`),
-  sendMessage: (id: string, content: string) => api.post(`/support/tickets/${id}/messages`, JSON.stringify(content), { headers: { 'Content-Type': 'application/json' } }),
-};
-
-// ─── Subscriptions ────────────────────────────────────────────
 export const subscriptionApi = {
-  getMine: () => api.get('/subscriptions/mine'),
-  subscribe: (data: { planKey: string; billingCycle: string; currency: string; paymentMethod?: string }) =>
-    api.post('/subscriptions', data),
-  cancel: () => api.delete('/subscriptions/mine'),
+  getMine:   ()     => api.get('/subscriptions/mine'),
+  subscribe: (d: any) => api.post('/subscriptions', d),
+  cancel:    ()     => api.delete('/subscriptions/mine'),
 };
 
-// ─── Requests ─────────────────────────────────────────────────
 export const requestsApi = {
-  getAll: (status?: string) => api.get('/requests', { params: status ? { status } : undefined }),
-  getById: (id: string) => api.get(`/requests/${id}`),
-  create: (data: any) => api.post('/requests', data),
-  updateStatus: (id: string, status: string, adminNotes?: string) => api.patch(`/requests/${id}/status`, { status, adminNotes }),
+  getAll:       (status?: string) => api.get('/requests', { params: status ? { status } : undefined }),
+  getById:      (id: string)      => api.get(`/requests/${id}`),
+  create:       (d: any)          => api.post('/requests', d),
+  updateStatus: (id: string, d: any) => api.patch(`/requests/${id}/status`, d),
 };
 
-// ─── Meetings ─────────────────────────────────────────────────
 export const meetingsApi = {
-  getAll: () => api.get('/meetings'),
-  schedule: (data: any) => api.post('/meetings', data),
-  setOutcome: (id: string, outcome: string, notes?: string) => api.patch(`/meetings/${id}/outcome`, { outcome, notes }),
-  confirm: (id: string, data: any) => api.patch(`/meetings/${id}/confirm`, data),
-  cancel: (id: string) => api.patch(`/meetings/${id}/cancel`),
+  getAll:     ()                   => api.get('/meetings'),
+  schedule:   (d: any)             => api.post('/meetings', d),
+  setOutcome: (id: string, d: any) => api.patch(`/meetings/${id}/outcome`, d),
+  cancel:     (id: string)         => api.patch(`/meetings/${id}/cancel`),
+  confirm:    (id: string, d: any) => api.patch(`/meetings/${id}/confirm`, d),
 };
 
-// ─── Projects ─────────────────────────────────────────────────
 export const projectsApi = {
-  getAll: (status?: string) => api.get('/projects', { params: status ? { status } : undefined }),
-  getById: (id: string) => api.get(`/projects/${id}`),
-  create: (data: any) => api.post('/projects', data),
-  update: (id: string, data: any) => api.put(`/projects/${id}`, data),
-  updateProgress: (id: string, progress: number, status?: string) => api.patch(`/projects/${id}/progress`, { progress, status }),
-  updateMilestone: (projectId: string, milestoneId: string, status: string) => api.patch(`/projects/${projectId}/milestones/${milestoneId}`, { status }),
+  getAll:          (status?: string) => api.get('/projects', { params: status ? { status } : undefined }),
+  getById:         (id: string)      => api.get(`/projects/${id}`),
+  create:          (d: any)          => api.post('/projects', d),
+  update:          (id: string, d: any) => api.patch(`/projects/${id}`, d),
+  updateMilestone: (pid: string, mid: string, status: string) =>
+    api.patch(`/projects/${pid}/milestones/${mid}`, JSON.stringify(status), { headers: { 'Content-Type': 'application/json' } }),
 };
 
-// ─── Timesheets ───────────────────────────────────────────────
 export const timesheetsApi = {
-  getAll: (status?: string) => api.get('/timesheets', { params: status ? { status } : undefined }),
-  submit: (data: any) => api.post('/timesheets', data),
-  approve: (id: string, approve: boolean, reason?: string) => api.patch(`/timesheets/${id}/approve`, { approve, reason }),
+  getAll:   (p?: any)  => api.get('/timesheets', { params: p }),
+  submit:   (d: any)   => api.post('/timesheets', d),
+  approve:  (id: string, d: any) => api.patch(`/timesheets/${id}/approve`, d),
 };
 
-// ─── Invoices ─────────────────────────────────────────────────
 export const invoicesApi = {
-  getAll: (status?: string) => api.get('/invoices', { params: status ? { status } : undefined }),
-  getById: (id: string) => api.get(`/invoices/${id}`),
-  markPaid: (id: string, method: string, transactionId?: string) => api.patch(`/invoices/${id}/mark-paid`, { invoiceId: id, method, transactionId }),
-  markOverdue: () => api.post('/invoices/mark-overdue'),
-  sendPaymentInstructions: (id: string) => api.post(`/invoices/${id}/payment-instructions`),
-  sendReminder: (id: string) => api.post(`/invoices/${id}/reminder`),
+  getAll:                  (status?: string) => api.get('/invoices', { params: status ? { status } : undefined }),
+  getById:                 (id: string)      => api.get(`/invoices/${id}`),
+  sendPaymentInstructions: (id: string)      => api.post(`/invoices/${id}/send-payment-instructions`),
+  markPaid:                (id: string, d: any) => api.patch(`/invoices/${id}/mark-paid`, d),
+  sendReminder:            (id: string)      => api.post(`/invoices/${id}/send-reminder`),
+  markOverdue:             ()                => api.post('/invoices/mark-overdue'),
 };
 
-// ─── Payments ─────────────────────────────────────────────────
 export const paymentsApi = {
-  getAll: () => api.get('/payments'),
-  recordPayout: (id: string, data: any) => api.post(`/payments/${id}/payout`, data),
+  getAll:       ()                   => api.get('/payments'),
+  recordPayout: (id: string, d: any) => api.post(`/payments/${id}/record-payout`, d),
 };
 
-// ─── Notifications ────────────────────────────────────────────
 export const notificationsApi = {
-  getAll: (unreadOnly?: boolean) => api.get('/notifications', { params: unreadOnly ? { unreadOnly: true } : undefined }),
-  getCount: () => api.get('/notifications/count'),
-  markRead: (id: string) => api.patch(`/notifications/${id}/read`),
-  markAllRead: () => api.post('/notifications/mark-all-read'),
-  delete: (id: string) => api.delete(`/notifications/${id}`),
+  getAll:      ()           => api.get('/notifications'),
+  getCount:    ()           => api.get('/notifications/count'),
+  markRead:    (id: string) => api.patch(`/notifications/${id}/read`),
+  markAllRead: ()           => api.post('/notifications/mark-all-read'),
+  delete:      (id: string) => api.delete(`/notifications/${id}`),
 };
 
-// ─── Standups ─────────────────────────────────────────────────
 export const standupsApi = {
-  getByProject: (projectId: string) => api.get(`/standups/project/${projectId}`),
-  submit: (data: any) => api.post('/standups', data),
+  getByProject: (pid: string) => api.get(`/standups/project/${pid}`),
+  submit:       (d: any)      => api.post('/standups', d),
 };
 
-// ─── Reviews ──────────────────────────────────────────────────
-export const reviewsApi = { submit: (data: any) => api.post('/reviews', data) };
+export const reviewsApi = {
+  submit: (d: any) => api.post('/reviews', d),
+};
 
-// ─── Admin ────────────────────────────────────────────────────
 export const adminApi = {
-  getStats: () => api.get('/admin/stats'),
-  getLeaderboard: () => api.get('/admin/leaderboard'),
-  getRevenueReport: () => api.get('/admin/reports/revenue'),
-  getRevenueBreakdown: () => api.get('/admin/revenue/breakdown'),
-  getRevenue: () => api.get('/admin/reports/revenue'),
-  getBreakdown: () => api.get('/admin/revenue/breakdown'),
-  getAttendance: (params?: any) => api.get('/admin/attendance', { params }),
-  getPendingPayouts: () => api.get('/admin/payouts/pending'),
-  verifyFreelancer: (userId: string, verified: boolean) => api.patch(`/admin/freelancers/${userId}/verify`, { verified }),
-  setUserRole: (userId: string, role: string) => api.patch(`/admin/users/${userId}/role`, JSON.stringify(role), { headers: { 'Content-Type': 'application/json' } }),
+  getStats:       ()     => api.get('/admin/stats'),
+  getLeaderboard: ()     => api.get('/admin/leaderboard'),
+  getRevenue:     ()     => api.get('/admin/reports/revenue'),
+  getBreakdown:   ()     => api.get('/admin/revenue/breakdown'),
+  getAttendance:  (p?: any) => api.get('/admin/attendance', { params: p }),
+  getPendingPayouts: ()  => api.get('/admin/pending-payouts'),
+  setRole:        (uid: string, role: string) =>
+    api.patch(`/admin/users/${uid}/role`, JSON.stringify(role), { headers: { 'Content-Type': 'application/json' } }),
+  verifyFreelancer: (id: string, v: boolean) =>
+    api.patch(`/admin/freelancers/${id}/verify`, v),
+};
+
+export const supportApi = {
+  getTickets:  ()                   => api.get('/support/tickets'),
+  create:      (d: any)             => api.post('/support/tickets', d),
+  getMessages: (id: string)         => api.get(`/support/tickets/${id}/messages`),
+  sendMessage: (id: string, msg: string) =>
+    api.post(`/support/tickets/${id}/messages`, JSON.stringify(msg), { headers: { 'Content-Type': 'application/json' } }),
+};
+
+export const requirementsApi = {
+  getPublic:   (p?: any)    => pub.get('/requirements/public', { params: p }),
+  getAll:      (p?: any)    => api.get('/requirements', { params: p }),
+  getMine:     ()             => api.get('/requirements/mine'),
+  create:      (d: any)     => api.post('/requirements', d),
+  apply:       (id: string|number, d: any) => api.post(`/requirements/${id}/apply`, d),
+  getMyApps:   ()           => api.get('/requirements/my-applications'),
+  update:      (id: string|number, d: any) => api.patch(`/requirements/${id}`, d),
+  remove:      (id: string|number) => api.delete(`/requirements/${id}`),
+  allocate:    (id: string|number, freelancerId: number) => api.patch(`/requirements/${id}/allocate`, { freelancerId }),
 };

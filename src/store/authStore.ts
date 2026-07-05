@@ -26,25 +26,37 @@ interface AuthStore {
   hydrate: () => void;
 }
 
-export const useAuthStore = create<AuthStore>((set) => ({
-  user: null,
-  isAuthenticated: false,
-  isLoading: false,
+// ── Read localStorage synchronously at module load (before any render) ──
+const _initUser: AuthUser | null = (() => {
+  try {
+    const s = getStoredAuth() as Record<string, any>;
+    if (s && s['accessToken'] && s['role'] && s['name'] && s['userId']) {
+      return { id: s['userId'], name: s['name'], role: s['role'] as UserRole, email: '', picture: s['picture'] || undefined } as AuthUser;
+    }
+  } catch {}
+  return null;
+})();
 
-  // Restore auth from localStorage on app load
+export const useAuthStore = create<AuthStore>((set) => ({
+  user:            _initUser,
+  isAuthenticated: !!_initUser,
+  isLoading:       false,   // ← already resolved above, never blocks renders
+
   hydrate: () => {
-    const stored = getStoredAuth();
-    if (stored.accessToken && stored.role && stored.name && stored.userId) {
-      set({
-        user: {
-          id: stored.userId,
-          name: stored.name,
-          role: stored.role,
-          email: '',
-          picture: stored.picture || undefined,
-        },
-        isAuthenticated: true,
-      });
+    // Re-reads localStorage — useful if called manually to refresh state
+    try {
+      const stored = getStoredAuth();
+      if (stored.accessToken && stored.role && stored.name && stored.userId) {
+        set({
+          user: { id: stored.userId, name: stored.name, role: stored.role as UserRole, email: '', picture: stored.picture || undefined },
+          isAuthenticated: true,
+          isLoading: false,
+        });
+      } else {
+        set({ user: null, isAuthenticated: false, isLoading: false });
+      }
+    } catch {
+      set({ isLoading: false });
     }
   },
 
@@ -54,7 +66,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       const { data } = await authApi.login(email, password);
       storeAuth(data);
       set({
-        user: { id: data.userId, name: data.name, role: data.role, email, picture: data.picture },
+        user: { id: data.userId, name: data.name, role: data.role as UserRole, email, picture: data.picture },
         isAuthenticated: true,
       });
     } finally {
@@ -68,7 +80,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       const { data } = await authApi.googleSignIn(idToken);
       storeAuth(data);
       set({
-        user: { id: data.userId, name: data.name, role: data.role, email: '', picture: data.picture },
+        user: { id: data.userId, name: data.name, role: data.role as UserRole, email: '', picture: data.picture },
         isAuthenticated: true,
       });
       return { isNewUser: data.isNewUser };
@@ -93,16 +105,13 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
   logout: async () => {
     const rt = localStorage.getItem('refreshToken');
-    // 1. Clear state immediately so UI updates right away
     set({ user: null, isAuthenticated: false });
     clearAuth();
-    // 2. Also clear any other keys that may have been set
     ['role','name','userId','picture','accessToken','refreshToken',
      'userRole','userName','userPicture','pendingAction','ws360_chat_state'].forEach(k => {
       try { localStorage.removeItem(k); } catch {}
       try { sessionStorage.removeItem(k); } catch {}
     });
-    // 3. Tell backend to revoke token (fire-and-forget)
-    try { if (rt) await authApi.logout(rt); } catch { /* ignore — client is already logged out */ }
+    try { if (rt) await authApi.logout(rt); } catch {}
   },
 }));

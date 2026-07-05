@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   DollarSign, Clock, FolderOpen, Star, Check, X, 
   Loader2, Home, ChevronRight, AlertCircle, Plus,
-  Calendar, Award, Shield, Zap, Edit2, Save
+  Calendar, Award, Shield, Zap, Edit2, Save, TrendingUp
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../../store/authStore';
@@ -11,6 +11,7 @@ import {
   useMyFreelancerProfile, useMyFreelancerStats, useProjects,
   useTimesheets, useSubmitTimesheet, useSubmitStandup,
   useMeetings, useConfirmMeeting, useUpdateFreelancerProfile, useNotifications,
+  useMyApplications,
 } from '../../hooks/useApi';
 
 // ── Shared helpers ────────────────────────────────────────────
@@ -660,6 +661,127 @@ export const FreelancerStandups: React.FC = () => {
         <button onClick={handleSubmit} disabled={submitStandup.isPending} className="flex items-center gap-2 px-6 py-3 text-white rounded-xl text-sm font-bold hover:opacity-90 disabled:opacity-50" style={{background:'linear-gradient(135deg,#1a1a2e,#16213e)'}}>
           {submitStandup.isPending ? <Loader2 size={14} className="animate-spin"/> : <Check size={14}/>} Submit standup
         </button>
+      </div>
+    </div>
+  );
+};
+
+// ── MY JOB APPLICATIONS ──────────────────────────────────────
+export const FreelancerApplications: React.FC = () => {
+  const { data: apps = [], isLoading } = useMyApplications();
+  const appArr = Array.isArray(apps) ? apps : [];
+
+  const STATUS_CFG: Record<string, { color: string; bg: string; label: string; icon: string; step: number }> = {
+    pending:     { color:'#d97706', bg:'#fffbeb', label:'Submitted',        icon:'📝', step:1 },
+    reviewed:    { color:'#3b82f6', bg:'#eff6ff', label:'Under Review',     icon:'👁️', step:2 },
+    shortlisted: { color:'#7c3aed', bg:'#f5f3ff', label:'Shortlisted',      icon:'⭐', step:3 },
+    assigned:    { color:'#059669', bg:'#ecfdf5', label:'Assigned to You',  icon:'✅', step:4 },
+    completed:   { color:'#16a34a', bg:'#f0fdf4', label:'Completed',        icon:'🎉', step:5 },
+    rejected:    { color:'#dc2626', bg:'#fef2f2', label:'Not Selected',     icon:'❌', step:0 },
+  };
+
+  const demoApps = [
+    { id:'d1', requirementTitle:'React Developer Needed', company:'Obsio Solutions', status:'shortlisted', appliedAt:new Date(Date.now()-86400000).toISOString(), type:'Hourly', rate:'₹500–₹800/hr', adminNote:'Your profile matches well. Admin will contact you to confirm session slot.' },
+    { id:'d2', requirementTitle:'DevOps Engineer — AWS Setup', company:'TechCorp India', status:'pending', appliedAt:new Date(Date.now()-7200000).toISOString(), type:'Day', rate:'₹4,000/day', adminNote:'' },
+    { id:'d3', requirementTitle:'Python Backend Developer', company:'StartupXYZ', status:'assigned', appliedAt:new Date(Date.now()-604800000).toISOString(), type:'Monthly', rate:'₹2,000/hr', adminNote:'You have been assigned! Session scheduled for Friday 7 PM IST. Check your WhatsApp.' },
+  ];
+
+  const display = appArr.length > 0 ? appArr : demoApps;
+  const STEPS = ['Submitted','Reviewed','Shortlisted','Assigned','Completed'];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <h2 className="font-black text-xl text-gray-900">My Job Applications</h2>
+          <p className="text-sm text-gray-500 mt-0.5">Track your requirement applications and assignment status</p>
+        </div>
+      </div>
+
+      {appArr.length === 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-start gap-3 text-sm text-blue-800">
+          <AlertCircle size={17} className="text-blue-500 shrink-0 mt-0.5"/>
+          <div><strong>Preview mode</strong> — showing sample data. Apply to jobs from the <a href="/" className="underline font-bold">homepage job board</a> to see real applications here.</div>
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="text-center py-12 text-gray-400 text-sm">Loading applications…</div>
+      ) : display.map((app: any) => {
+        const cfg = STATUS_CFG[app.status] || STATUS_CFG.pending;
+        const stepNum = cfg.step;
+        return (
+          <div key={app.id} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all">
+            <div className="flex items-start gap-4">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center text-2xl flex-shrink-0" style={{ background:cfg.bg }}>
+                {cfg.icon}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-3 mb-1 flex-wrap">
+                  <div>
+                    <div className="font-black text-gray-900 text-sm">{app.requirementTitle}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      {app.company} · Applied {app.appliedAt ? new Date(app.appliedAt).toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : 'recently'}
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold px-3 py-1 rounded-full flex-shrink-0" style={{ background:cfg.bg, color:cfg.color, border:`1px solid ${cfg.color}30` }}>
+                    {cfg.label}
+                  </span>
+                </div>
+
+                <div className="flex gap-4 text-xs text-gray-500 mb-3 mt-2 flex-wrap">
+                  <span>⚡ {app.type}</span>
+                  <span className="font-bold text-green-700">💰 {app.rate}</span>
+                </div>
+
+                {app.adminNote && (
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5 text-xs text-blue-800 mb-3">
+                    <strong>📩 Admin:</strong> {app.adminNote}
+                  </div>
+                )}
+
+                {/* Timeline */}
+                {app.status !== 'rejected' && (
+                  <div className="flex items-center mt-3">
+                    {STEPS.map((s, i) => {
+                      const done = stepNum > i+1, active = stepNum === i+1;
+                      return (
+                        <React.Fragment key={s}>
+                          <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black transition-all ${done?'bg-green-500 text-white':active?'bg-blue-600 text-white':'bg-gray-100 text-gray-400'}`}
+                              style={active?{boxShadow:'0 0 0 3px rgba(37,99,235,0.2)'}:{}}>
+                              {done ? '✓' : i+1}
+                            </div>
+                            <div className="text-center leading-tight" style={{ fontSize:8, maxWidth:44, whiteSpace:'nowrap', color:active?'#2563eb':done?'#16a34a':'#9ca3af', fontWeight:active||done?700:400 }}>{s}</div>
+                          </div>
+                          {i < STEPS.length-1 && (
+                            <div className={`h-0.5 flex-1 mx-1 mb-3 transition-all ${done?'bg-green-400':'bg-gray-100'}`}/>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {app.status === 'rejected' && (
+                  <div className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mt-2">
+                    ❌ Not selected for this requirement. Keep applying — new jobs are posted daily!
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-5 flex items-center justify-between gap-4">
+        <div>
+          <div className="font-black text-gray-900 text-sm mb-1">New requirements posted daily</div>
+          <div className="text-xs text-gray-500">Visit the homepage job board to browse and apply for new IT requirements from verified businesses.</div>
+        </div>
+        <a href="/#jobs" className="text-xs font-bold px-4 py-2.5 rounded-xl text-white flex-shrink-0" style={{ background:'linear-gradient(135deg,#1e3a5f,#3b82f6)' }}>
+          Browse Jobs →
+        </a>
       </div>
     </div>
   );

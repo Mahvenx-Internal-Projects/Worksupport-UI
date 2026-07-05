@@ -2,6 +2,9 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DollarSign, Users, FolderOpen, Clock, TrendingUp, AlertTriangle, CheckCircle, Zap, ArrowRight } from 'lucide-react';
 import { useAdminStats, useRequests, useProjects, useInvoices } from '../../hooks/useApi';
+import { requirementsApi } from '../../services/endpoints';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { StatCard, StatusBadge } from '../../components/common';
 
 const AdminDashboard: React.FC = () => {
@@ -11,6 +14,32 @@ const AdminDashboard: React.FC = () => {
   const { data: projects = [] } = useProjects('active');
   const { data: overdueInvoices = [] } = useInvoices('overdue');
   const { data: pendingInvoices = [] } = useInvoices('pending');
+
+  const { data: reqsData, refetch: refetchReqs } = useQuery({
+    queryKey: ['admin-requirements'],
+    queryFn: () => requirementsApi.getAll({ status: 'pending' }).then((r: any) => r.data?.items ?? []),
+  });
+  const pendingReqs = (reqsData ?? []) as any[];
+
+  const qc = useQueryClient();
+
+  const approveReq = async (id: string) => {
+    try {
+      await requirementsApi.update(id, { status: 'open' });
+      toast.success('Requirement approved and now live on job board!');
+      qc.invalidateQueries({ queryKey: ['admin-requirements'] });
+      refetchReqs();
+    } catch { toast.error('Failed to approve'); }
+  };
+
+  const rejectReq = async (id: string) => {
+    try {
+      await requirementsApi.update(id, { status: 'rejected' });
+      toast.success('Requirement rejected');
+      qc.invalidateQueries({ queryKey: ['admin-requirements'] });
+      refetchReqs();
+    } catch { toast.error('Failed to reject'); }
+  };
 
   const pendingRequests = requests.slice(0, 5);
   const activeProjects = projects.slice(0, 5);
@@ -37,6 +66,22 @@ const AdminDashboard: React.FC = () => {
           </div>
           <button onClick={() => navigate('/admin/requests')} className="shrink-0 flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-bold">
             Review now <ArrowRight size={14}/>
+          </button>
+        </div>
+      )}
+
+      {/* ─── REQUIREMENTS ALERT ─── */}
+      {pendingReqs.length > 0 && (
+        <div className="bg-green-50 border border-green-200 rounded-2xl px-5 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <CheckCircle size={20} className="text-green-500 shrink-0"/>
+            <div>
+              <div className="font-bold text-green-900">{pendingReqs.length} requirement{pendingReqs.length > 1 ? 's' : ''} pending approval</div>
+              <div className="text-sm text-green-700">Client-posted requirements waiting for review before going live</div>
+            </div>
+          </div>
+          <button onClick={() => navigate('/admin/requirements')} className="shrink-0 flex items-center gap-1.5 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl text-sm font-bold">
+            Review & Approve <ArrowRight size={14}/>
           </button>
         </div>
       )}
@@ -155,6 +200,49 @@ const AdminDashboard: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* ─── PENDING REQUIREMENTS ─── */}
+      {pendingReqs.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-black text-lg text-gray-900">📋 Pending Requirements</h2>
+            <button onClick={() => navigate('/admin/requirements')} className="text-sm text-blue-600 font-semibold hover:underline">View all →</button>
+          </div>
+          <div className="space-y-3">
+            {pendingReqs.slice(0, 3).map((req: any) => (
+              <div key={req.id} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="font-black text-gray-900 text-sm">{req.title}</span>
+                      {req.urgency === 'urgent' && <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">🔥 URGENT</span>}
+                    </div>
+                    <div className="text-xs text-gray-500 mb-2">{req.companyName || 'Client'} · Posted {req.createdAt ? new Date(req.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '—'}</div>
+                    <div className="flex flex-wrap gap-3 text-xs text-gray-600 mb-2">
+                      <span>🛠 {req.skillsRequired}</span>
+                      <span>⏱ {req.hoursPerEngagement} hrs</span>
+                      <span>💰 {req.currency}{req.budgetMin}–{req.currency}{req.budgetMax}/hr</span>
+                      <span>🌐 {req.workMode}</span>
+                      <span>👥 {req.freelancerCount} freelancer{req.freelancerCount > 1 ? 's' : ''}</span>
+                    </div>
+                    {req.description && <p className="text-xs text-gray-400 truncate">{req.description.slice(0, 120)}{req.description.length > 120 ? '…' : ''}</p>}
+                  </div>
+                  <div className="flex flex-col gap-2 flex-shrink-0">
+                    <button onClick={() => approveReq(req.id)}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-xl text-xs font-bold whitespace-nowrap">
+                      ✅ Approve & Publish
+                    </button>
+                    <button onClick={() => rejectReq(req.id)}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl text-xs font-bold whitespace-nowrap">
+                      ❌ Reject
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

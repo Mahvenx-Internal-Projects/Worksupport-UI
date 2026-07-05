@@ -5,6 +5,7 @@ import {
   requestsApi, meetingsApi, projectsApi, timesheetsApi,
   invoicesApi, paymentsApi, notificationsApi, standupsApi,
   reviewsApi, adminApi, supportApi,
+  requirementsApi,
 } from '../services/endpoints';
 
 // ─── Public ───────────────────────────────────────────────────
@@ -215,7 +216,7 @@ export const useNotifications = () =>
   useQuery({ queryKey: ['notifs'], queryFn: () => notificationsApi.getAll().then(r => r.data), refetchInterval: 60_000 });
 
 export const useNotifCount = () =>
-  useQuery({ queryKey: ['notif-count'], queryFn: () => notificationsApi.getCount().then((r: any) => r.data.count), refetchInterval: 30_000 });
+  useQuery({ queryKey: ['notif-count'], queryFn: () => notificationsApi.getCount().then(r => r.data.count), refetchInterval: 30_000 });
 
 // ─── Standups ─────────────────────────────────────────────────
 export const useStandups = (projectId?: string) =>
@@ -246,16 +247,16 @@ export const useLeaderboard = () =>
   useQuery({ queryKey: ['leaderboard'], queryFn: () => adminApi.getLeaderboard().then(r => r.data) });
 
 export const useRevenueReport = () =>
-  useQuery({ queryKey: ['revenue-report'], queryFn: () => adminApi.getRevenue().then((r: any) => r.data) });
+  useQuery({ queryKey: ['revenue-report'], queryFn: () => adminApi.getRevenue().then(r => r.data) });
 
 export const useRevenueBreakdown = () =>
-  useQuery({ queryKey: ['revenue-breakdown'], queryFn: () => adminApi.getBreakdown().then((r: any) => r.data) });
+  useQuery({ queryKey: ['revenue-breakdown'], queryFn: () => adminApi.getBreakdown().then(r => r.data) });
 
 export const useAttendanceLogs = (p?: any) =>
-  useQuery({ queryKey: ['attendance', p], queryFn: () => adminApi.getAttendance(p).then((r: any) => r.data) });
+  useQuery({ queryKey: ['attendance', p], queryFn: () => adminApi.getAttendance(p).then(r => r.data) });
 
 export const usePendingPayouts = () =>
-  useQuery({ queryKey: ['pending-payouts'], queryFn: () => adminApi.getPendingPayouts().then((r: any) => r.data) });
+  useQuery({ queryKey: ['pending-payouts'], queryFn: () => adminApi.getPendingPayouts().then(r => r.data) });
 
 export const useVerifyFreelancer = () => {
   const qc = useQueryClient();
@@ -269,3 +270,19 @@ export const useVerifyFreelancer = () => {
 export const useUpdateProgress = useUpdateProject;
 export const useFreelancerStats = useMyFreelancerStats;
 export const useRevenuBreakdown = useRevenueBreakdown;
+
+// ─── Requirements / Job Board ────────────────────────────────
+export const usePublicRequirements = (p?: any) =>
+  useQuery({ queryKey: ['pub-reqs', p], queryFn: () => requirementsApi.getPublic(p).then((r: any) => r.data), staleTime: 30_000 });
+
+export const useMyApplications = () =>
+  useQuery({ queryKey: ['my-apps'], queryFn: () => requirementsApi.getMyApps().then((r: any) => r.data), retry: false });
+
+export const useApplyRequirement = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => requirementsApi.apply(id, data),
+    onSuccess: () => { toast.success('Application submitted! Admin will review and contact you within 4 hours.', { icon: '✅' }); qc.invalidateQueries({ queryKey: ['my-apps'] }); },
+    onError: (e: any) => toast.error(e?.response?.data?.message || 'Failed to apply'),
+  });
+};

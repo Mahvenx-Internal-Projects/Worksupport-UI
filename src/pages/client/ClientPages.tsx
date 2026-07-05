@@ -1,206 +1,599 @@
-import { api } from '../../services/api';
-import { useQueryClient } from '@tanstack/react-query';
-import { useQuery } from '@tanstack/react-query';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, Filter, Star, Clock, Check, X, Loader2,
   AlertCircle, DollarSign, FolderOpen, FileText, Plus,
-  ChevronRight, ChevronLeft, Zap, Shield, Award
+  ChevronRight, ChevronLeft, Zap, Shield, Award, CheckCircle,
+  TrendingUp, Calendar, Bell, RefreshCw, Eye, Users
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useFreelancers, useProjects, useTimesheets, useApproveTimesheet, useInvoices, useMarkInvoicePaid, useSendPaymentInstructions, useSendInvoiceReminder, useCreateRequest, useMeetings, useNotifications, useSubmitReview } from '../../hooks/useApi';
-import { publicApi } from '../../services/endpoints';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useFreelancers, useProjects, useTimesheets, useApproveTimesheet,
+  useInvoices, useMarkInvoicePaid, useSendPaymentInstructions,
+  useSendInvoiceReminder, useCreateRequest, useMeetings,
+  useNotifications, useSubmitReview, useRequests
+} from '../../hooks/useApi';
+import { publicApi, requirementsApi } from '../../services/endpoints';
 import { useAuthStore } from '../../store/authStore';
 
-const cur = (amt: number, c = 'USD') => (c === 'INR' ? '₹' : '$') + (amt ?? 0).toLocaleString();
+const fmt = (amt: number, c = 'INR') => (c === 'INR' ? '₹' : '$') + (amt ?? 0).toLocaleString();
+const cur = fmt; // alias used by lower sections
 const badge = (status: string) => {
-  const map: Record<string, string> = { active: 'bg-green-50 text-green-700 border-green-200', pending: 'bg-amber-50 text-amber-700 border-amber-200', pending_payment: 'bg-red-50 text-red-700 border-red-200', completed: 'bg-blue-50 text-blue-700 border-blue-200', paused: 'bg-orange-50 text-orange-700 border-orange-200', cancelled: 'bg-red-50 text-red-700 border-red-200', submitted: 'bg-purple-50 text-purple-700 border-purple-200', approved: 'bg-green-50 text-green-700 border-green-200', rejected: 'bg-red-50 text-red-700 border-red-200', paid: 'bg-green-50 text-green-700 border-green-200', overdue: 'bg-red-50 text-red-700 border-red-200', };
-  return <span className={`text-xs px-2 py-0.5 rounded-full border font-medium capitalize ${map[status] || 'bg-gray-50 text-gray-600 border-gray-200'}`}>{status.replace('_',' ')}</span>;
+  const map: Record<string, string> = {
+    active: 'bg-green-50 text-green-700 border-green-200',
+    pending: 'bg-amber-50 text-amber-700 border-amber-200',
+    pending_payment: 'bg-red-50 text-red-700 border-red-200',
+    completed: 'bg-blue-50 text-blue-700 border-blue-200',
+    paused: 'bg-orange-50 text-orange-700 border-orange-200',
+    cancelled: 'bg-red-50 text-red-700 border-red-200',
+    submitted: 'bg-purple-50 text-purple-700 border-purple-200',
+    approved: 'bg-green-50 text-green-700 border-green-200',
+    rejected: 'bg-red-50 text-red-700 border-red-200',
+    paid: 'bg-green-50 text-green-700 border-green-200',
+    overdue: 'bg-red-50 text-red-700 border-red-200',
+  };
+  return <span className={`text-xs px-2 py-0.5 rounded-full border font-medium capitalize ${map[status] || 'bg-gray-50 text-gray-600 border-gray-200'}`}>{status.replace('_', ' ')}</span>;
+};
+
+const timeAgo = (d: string) => {
+  const diff = Date.now() - new Date(d).getTime();
+  const h = Math.floor(diff / 3600000);
+  if (h < 1) return 'Just now';
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+};
+
+// ── Status config ────────────────────────────────────────────
+const STATUS_CFG: Record<string, { color: string; bg: string; border: string; label: string; icon: string; step: number }> = {
+  pending:     { color:'#d97706', bg:'#fffbeb', border:'#fde68a', label:'Submitted',        icon:'📝', step:1 },
+  reviewed:    { color:'#3b82f6', bg:'#eff6ff', border:'#bfdbfe', label:'Under Review',     icon:'👁️', step:2 },
+  matched:     { color:'#7c3aed', bg:'#f5f3ff', border:'#ddd6fe', label:'Expert Matched',   icon:'✅', step:3 },
+  confirmed:   { color:'#059669', bg:'#ecfdf5', border:'#a7f3d0', label:'Session Confirmed', icon:'📅', step:4 },
+  in_progress: { color:'#0891b2', bg:'#ecfeff', border:'#a5f3fc', label:'In Progress',      icon:'⚡', step:5 },
+  completed:   { color:'#16a34a', bg:'#f0fdf4', border:'#86efac', label:'Completed',        icon:'🎉', step:6 },
+  cancelled:   { color:'#dc2626', bg:'#fef2f2', border:'#fca5a5', label:'Cancelled',        icon:'❌', step:0 },
+};
+const STATUS_STEPS = ['Submitted','Under Review','Expert Matched','Session Confirmed','In Progress','Completed'];
+
+// ── Request timeline card ────────────────────────────────────
+const ReqCard: React.FC<{ req: any; onViewExpert: (id: string) => void }> = ({ req, onViewExpert }) => {
+  const [open, setOpen] = useState(false);
+  const cfg = STATUS_CFG[req.status] || STATUS_CFG.pending;
+  const elapsed = req.createdAt ? Math.round((Date.now() - new Date(req.createdAt).getTime()) / 3600000) : 0;
+  const progress = Math.min(100, (elapsed / 4) * 100);
+
+  return (
+    <div style={{ background:'#fff', border:`1.5px solid ${open ? cfg.border : '#f1f5f9'}`, borderRadius:18, overflow:'hidden', transition:'all .25s', boxShadow: open ? `0 8px 24px ${cfg.color}18` : '0 2px 6px rgba(0,0,0,0.04)', marginBottom:10 }}>
+      <div onClick={()=>setOpen(!open)} style={{ padding:'16px 20px', cursor:'pointer', display:'flex', alignItems:'center', gap:14 }}>
+        <div style={{ width:42, height:42, borderRadius:13, background:cfg.bg, border:`1.5px solid ${cfg.border}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>{cfg.icon}</div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
+            <span style={{ fontWeight:800, fontSize:14, color:'#0f172a' }}>{req.freelancerName||req.freelancerAlias||'Expert'}</span>
+            <span style={{ fontSize:11, fontWeight:700, padding:'2px 9px', borderRadius:100, background:cfg.bg, color:cfg.color, border:`1px solid ${cfg.border}` }}>{cfg.label}</span>
+          </div>
+          <div style={{ fontSize:12, color:'#64748b', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            {req.sessionType||'Consultation'} · {req.durationMinutes ? `${req.durationMinutes/60}hr` : '—'} · {req.createdAt ? timeAgo(req.createdAt) : '—'}
+          </div>
+        </div>
+        {req.status==='pending' && (
+          <div style={{ textAlign:'right', flexShrink:0 }}>
+            <div style={{ fontSize:11, color:'#d97706', fontWeight:700, marginBottom:4 }}>⏱ Admin responding…</div>
+            <div style={{ width:80, height:5, borderRadius:3, background:'#f3f4f6', overflow:'hidden' }}>
+              <div style={{ height:'100%', borderRadius:3, background:'linear-gradient(90deg,#d97706,#f59e0b)', width:`${progress}%` }}/>
+            </div>
+            <div style={{ fontSize:10, color:'#94a3b8', marginTop:3 }}>{Math.max(0,4-elapsed)}hr remaining</div>
+          </div>
+        )}
+        {req.status==='completed' && req.budgetMin && (
+          <div style={{ textAlign:'right', flexShrink:0 }}>
+            <div style={{ fontWeight:900, fontSize:18, color:'#0f172a' }}>{fmt(req.budgetMin, req.currency)}</div>
+            <div style={{ fontSize:11, color:'#22c55e', fontWeight:600 }}>Completed</div>
+          </div>
+        )}
+        <ChevronRight size={16} color="#94a3b8" style={{ transform:open?'rotate(90deg)':'none', transition:'transform .2s', flexShrink:0 }}/>
+      </div>
+
+      {open && (
+        <div style={{ borderTop:'1px solid #f1f5f9', padding:'20px' }}>
+          {/* Progress timeline */}
+          {req.status!=='cancelled' && (
+            <div style={{ marginBottom:20 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#374151', marginBottom:12, textTransform:'uppercase', letterSpacing:'0.04em' }}>Request progress</div>
+              <div style={{ display:'flex', alignItems:'center' }}>
+                {STATUS_STEPS.map((s,i)=>{
+                  const done = cfg.step > i+1, active = cfg.step === i+1;
+                  return (
+                    <React.Fragment key={s}>
+                      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, flexShrink:0 }}>
+                        <div style={{ width:26, height:26, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:800,
+                          background: done?'#22c55e':active?cfg.color:'#f1f5f9',
+                          color: done||active?'#fff':'#94a3b8',
+                          boxShadow: active?`0 0 0 3px ${cfg.color}30`:'none',
+                        }}>{done?'✓':i+1}</div>
+                        <div style={{ fontSize:8, color:active?cfg.color:done?'#22c55e':'#94a3b8', fontWeight:active||done?700:400, whiteSpace:'nowrap', maxWidth:55, textAlign:'center', lineHeight:1.3 }}>{s}</div>
+                      </div>
+                      {i < STATUS_STEPS.length-1 && <div style={{ flex:1, height:2, background:done?'#22c55e':'#f1f5f9', margin:'0 3px 18px', transition:'background .3s' }}/>}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {/* Details grid */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:14 }}>
+            {[
+              {l:'Session type', v:req.sessionType||'Consultation'},
+              {l:'Duration', v:req.durationMinutes?`${req.durationMinutes/60} hours`:'—'},
+              {l:'Your bid rate', v:req.budgetMin?fmt(req.budgetMin,req.currency)+'/hr':'Not specified'},
+              {l:'Preferred date', v:req.preferredDateTime?new Date(req.preferredDateTime).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}):'—'},
+              {l:'Submitted', v:req.createdAt?new Date(req.createdAt).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}):'—'},
+              {l:'Last updated', v:req.updatedAt?timeAgo(req.updatedAt):'—'},
+            ].map(item=>(
+              <div key={item.l} style={{ background:'#f8fafc', borderRadius:10, padding:'10px 12px' }}>
+                <div style={{ fontSize:10, color:'#94a3b8', fontWeight:600, marginBottom:3, textTransform:'uppercase', letterSpacing:'0.04em' }}>{item.l}</div>
+                <div style={{ fontSize:13, fontWeight:700, color:'#0f172a' }}>{item.v}</div>
+              </div>
+            ))}
+          </div>
+          {req.description && (
+            <div style={{ background:'#f8fafc', borderRadius:12, padding:'12px 14px', marginBottom:12 }}>
+              <div style={{ fontSize:10, fontWeight:700, color:'#64748b', marginBottom:5, textTransform:'uppercase', letterSpacing:'0.04em' }}>Your requirement</div>
+              <p style={{ fontSize:13, color:'#374151', lineHeight:1.7, margin:0 }}>{req.description.slice(0,300)}{req.description.length>300?'…':''}</p>
+            </div>
+          )}
+          {req.adminNotes && (
+            <div style={{ background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:12, padding:'12px 14px', marginBottom:12 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#1d4ed8', marginBottom:5 }}>📩 Message from WorkSupport 360 Admin</div>
+              <p style={{ fontSize:13, color:'#1e40af', lineHeight:1.7, margin:0 }}>{req.adminNotes}</p>
+            </div>
+          )}
+          <div style={{ background:cfg.bg, border:`1px solid ${cfg.border}`, borderRadius:12, padding:'11px 14px', marginBottom:14, fontSize:13, color:cfg.color, fontWeight:600 }}>
+            {cfg.icon} {req.status==='pending'?'Your request is in the queue. Admin will contact you within 4 hours.':req.status==='reviewed'?'Admin is reviewing and identifying the best expert for you.':req.status==='matched'?'An expert has been matched! Admin is confirming their availability.':req.status==='confirmed'?'Session confirmed! Check your email for the calendar invite.':req.status==='in_progress'?'Session is in progress. You\'ll receive invoice and summary after.':req.status==='completed'?'Session completed! Please leave a review if you haven\'t.':'This request was cancelled. Contact support for help.'}
+          </div>
+          <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+            {req.freelancerId && (
+              <button onClick={()=>onViewExpert(req.freelancerId)} style={{ display:'flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:10, background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:'#fff', border:'none', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                <Eye size={13}/> View Expert Profile
+              </button>
+            )}
+            {req.status==='completed' && (
+              <button style={{ display:'flex', alignItems:'center', gap:6, padding:'9px 16px', borderRadius:10, background:'#f8fafc', border:'1.5px solid #e2e8f0', color:'#374151', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                <Star size={13}/> Leave Review
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 // ── CLIENT DASHBOARD ─────────────────────────────────────────
-// ── Client Requirements Panel ────────────────────────────────
-const ClientRequirementsPanel: React.FC = () => {
+export const ClientDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const qc = useQueryClient();
-  const [expandedId, setExpandedId] = useState<string|null>(null);
+  const { user } = useAuthStore();
+  const { data: projects = [] } = useProjects();
+  const { data: invoices = [] } = useInvoices();
+  const { data: meetings = [] } = useMeetings();
+  const { data: requests = [], isLoading: reqLoading, refetch } = useRequests();
+  const [reqFilter, setReqFilter] = useState('all');
+  const [reqSearch, setReqSearch] = useState('');
 
-  const { data: reqs = [], isLoading, refetch } = useQuery({
-    queryKey: ['client-requirements'],
-    queryFn: () => api.get('/requirements/mine').then((r:any) => r.data ?? []),
-    staleTime: 30000,
+  const reqArr = Array.isArray(requests) ? requests : [];
+  const activeProjects = (projects as any[]).filter((p:any) => p.status === 'active');
+  const pendingInvoices = (invoices as any[]).filter((i:any) => i.status === 'pending' || i.status === 'overdue');
+  const overdueInvoices = (invoices as any[]).filter((i:any) => i.status === 'overdue');
+  const upcomingMeetings = (meetings as any[]).filter((m:any) => m.status === 'upcoming').slice(0,3);
+  const totalPending = pendingInvoices.reduce((s:number,i:any) => s+(i.total??0), 0);
+  const pendingReqs = reqArr.filter((r:any) => ['pending','reviewed','matched'].includes(r.status));
+  const confirmedReqs = reqArr.filter((r:any) => ['confirmed','in_progress'].includes(r.status));
+  const completedReqs = reqArr.filter((r:any) => r.status === 'completed');
+
+  const filteredReqs = reqArr.filter((r:any) => {
+    const mf = reqFilter==='all' || r.status===reqFilter || (reqFilter==='active' && ['pending','reviewed','matched','confirmed','in_progress'].includes(r.status));
+    const ms = !reqSearch || (r.freelancerName||'').toLowerCase().includes(reqSearch.toLowerCase()) || (r.description||'').toLowerCase().includes(reqSearch.toLowerCase());
+    return mf && ms;
   });
 
-  const requirements: any[] = Array.isArray(reqs) ? reqs : [];
-  const open   = requirements.filter((r:any) => r.status === 'open' || r.status === 'in_progress');
-  const closed = requirements.filter((r:any) => r.status === 'closed' || r.status === 'cancelled');
-
-  const STATUS_CFG: Record<string,{bg:string;color:string;label:string}> = {
-    open:        {bg:'#dcfce7',color:'#15803d',label:'Open'},
-    in_progress: {bg:'#dbeafe',color:'#1d4ed8',label:'In Progress'},
-    closed:      {bg:'#f1f5f9',color:'#475569',label:'Closed'},
-    cancelled:   {bg:'#fee2e2',color:'#dc2626',label:'Cancelled'},
-  };
-
-  const ASSIGN_CFG: Record<string,{bg:string;color:string;label:string}> = {
-    notified:   {bg:'#dbeafe',color:'#1d4ed8',label:'Notified'},
-    interested: {bg:'#dcfce7',color:'#15803d',label:'✅ Interested'},
-    declined:   {bg:'#fee2e2',color:'#dc2626',label:'Declined'},
-    hired:      {bg:'#ede9fe',color:'#6d28d9',label:'Hired'},
-  };
-
-  const cur = (r:any) => r.currency === 'INR' ? '₹' : r.currency === 'EUR' ? '€' : '$';
-
-  if (isLoading) return (
-    <div style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:20,padding:'28px',textAlign:'center'}}>
-      <div style={{width:24,height:24,borderRadius:'50%',border:'3px solid #e2e8f0',borderTopColor:'#6366f1',animation:'spin 1s linear infinite',margin:'0 auto 10px'}}/>
-      <div style={{fontSize:13,color:'#64748b'}}>Loading requirements…</div>
-    </div>
-  );
+  // Demo data when empty
+  const demoReqs = [
+    {id:'d1',status:'pending',freelancerName:'Rahul S.',sessionType:'Consultation',durationMinutes:120,createdAt:new Date(Date.now()-7200000).toISOString()},
+    {id:'d2',status:'confirmed',freelancerName:'Deepa N.',sessionType:'Demo',durationMinutes:240,createdAt:new Date(Date.now()-86400000).toISOString(),adminNotes:'Session confirmed for tomorrow 7 PM IST. Zoom link sent to your email.'},
+    {id:'d3',status:'completed',freelancerName:'Arjun M.',sessionType:'Development',durationMinutes:480,createdAt:new Date(Date.now()-604800000).toISOString(),budgetMin:2800,currency:'INR'},
+  ];
 
   return (
-    <div style={{fontFamily:"'Plus Jakarta Sans',system-ui,sans-serif"}}>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    <div style={{ fontFamily:"'Inter',system-ui,sans-serif", padding:'0 0 40px' }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');*{box-sizing:border-box}@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}.fu{animation:fadeUp .4s ease both}`}</style>
+
       {/* Header */}
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16,flexWrap:'wrap',gap:10}}>
+      <div className="fu" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12, marginBottom:22 }}>
         <div>
-          <h2 style={{fontWeight:900,fontSize:18,color:'#0f172a',letterSpacing:'-0.02em',margin:'0 0 3px'}}>My Requirements</h2>
-          <p style={{fontSize:12,color:'#64748b',margin:0}}>
-            {open.length} active · {closed.length} closed
-            {requirements.some((r:any) => (r.assignments??[]).some((a:any)=>a.status==='interested')) && ' · 🎉 Expert interested!'}
-          </p>
+          <h1 style={{ fontWeight:900, fontSize:22, color:'#0f172a', margin:'0 0 3px', letterSpacing:'-0.03em' }}>Welcome back{user?.name?`, ${user.name.split(' ')[0]}`:''} 👋</h1>
+          <p style={{ fontSize:13, color:'#64748b', margin:0 }}>Track your hire requests and project status</p>
         </div>
-        <button onClick={()=>navigate('/client/post-requirement')}
-          style={{display:'flex',alignItems:'center',gap:6,padding:'9px 18px',borderRadius:12,background:'linear-gradient(135deg,#6366f1,#8b5cf6)',color:'#fff',border:'none',fontSize:12,fontWeight:700,cursor:'pointer',boxShadow:'0 3px 10px rgba(99,102,241,0.3)'}}>
+        <button onClick={()=>window.open('/','_self')} style={{ display:'flex', alignItems:'center', gap:7, padding:'10px 20px', borderRadius:12, background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:'#fff', border:'none', fontSize:14, fontWeight:700, cursor:'pointer', boxShadow:'0 3px 12px rgba(59,130,246,0.3)' }}>
+          <Zap size={14}/> Hire an Expert
+        </button>
+      </div>
+
+      {/* Overdue alert */}
+      {overdueInvoices.length > 0 && (
+        <div style={{ background:'#fef2f2', border:'1.5px solid #fca5a5', borderRadius:14, padding:'13px 18px', marginBottom:18, display:'flex', alignItems:'center', gap:12 }}>
+          <AlertCircle size={17} color="#dc2626"/>
+          <div style={{ flex:1, fontSize:13 }}><span style={{ fontWeight:800, color:'#dc2626' }}>{overdueInvoices.length} overdue invoice{overdueInvoices.length>1?'s':''} · </span><span style={{ color:'#b91c1c' }}>Total: {fmt(overdueInvoices.reduce((s:number,i:any)=>s+i.total,0))} — pay to avoid disruption</span></div>
+          <button onClick={()=>navigate('/client/invoices')} style={{ padding:'7px 14px', borderRadius:9, background:'#dc2626', color:'#fff', border:'none', fontSize:12, fontWeight:700, cursor:'pointer' }}>Pay now →</button>
+        </div>
+      )}
+
+      {/* Stats */}
+      <div className="fu" style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14, marginBottom:24 }}>
+        {[
+          {l:'Active requests',v:pendingReqs.length+confirmedReqs.length,icon:<Clock size={15}/>,col:'#3b82f6',bg:'#eff6ff',sub:'awaiting or in progress'},
+          {l:'Active projects',v:activeProjects.length,icon:<FolderOpen size={15}/>,col:'#059669',bg:'#ecfdf5',sub:'currently running'},
+          {l:'Sessions done',v:completedReqs.length,icon:<CheckCircle size={15}/>,col:'#7c3aed',bg:'#f5f3ff',sub:'all time'},
+          {l:'Pending payment',v:fmt(totalPending),icon:<FileText size={15}/>,col:'#d97706',bg:'#fffbeb',sub:`${pendingInvoices.length} invoice${pendingInvoices.length!==1?'s':''}`},
+        ].map(s=>(
+          <div key={s.l} style={{ background:'#fff', borderRadius:16, border:'1.5px solid #f1f5f9', padding:'16px', boxShadow:'0 2px 6px rgba(0,0,0,0.04)' }}>
+            <div style={{ width:34, height:34, borderRadius:10, background:s.bg, color:s.col, display:'flex', alignItems:'center', justifyContent:'center', marginBottom:10 }}>{s.icon}</div>
+            <div style={{ fontWeight:900, fontSize:22, color:'#0f172a', letterSpacing:'-0.03em', lineHeight:1 }}>{s.v}</div>
+            <div style={{ fontSize:12, fontWeight:600, color:'#374151', marginTop:4 }}>{s.l}</div>
+            <div style={{ fontSize:11, color:'#94a3b8', marginTop:2 }}>{s.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Main grid */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 300px', gap:18, alignItems:'flex-start' }}>
+
+        {/* Requests panel */}
+        <div style={{ background:'#fff', borderRadius:20, border:'1.5px solid #f1f5f9', overflow:'hidden', boxShadow:'0 4px 16px rgba(0,0,0,0.05)' }}>
+          <div style={{ padding:'16px 20px', borderBottom:'1px solid #f8fafc', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
+            <div>
+              <h3 style={{ fontWeight:800, fontSize:15, color:'#0f172a', margin:'0 0 2px' }}>My Hire Requests</h3>
+              <p style={{ fontSize:12, color:'#64748b', margin:0 }}>Click any request to expand full details</p>
+            </div>
+            <button onClick={()=>refetch()} style={{ width:32, height:32, borderRadius:9, background:'#f8fafc', border:'1.5px solid #f1f5f9', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#64748b' }}>
+              <RefreshCw size={13}/>
+            </button>
+          </div>
+
+          <div style={{ padding:'12px 16px', borderBottom:'1px solid #f8fafc', display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+            <div style={{ position:'relative', flex:1, minWidth:160 }}>
+              <Search size={12} style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:'#94a3b8' }}/>
+              <input value={reqSearch} onChange={e=>setReqSearch(e.target.value)} placeholder="Search requests…"
+                style={{ width:'100%', paddingLeft:30, paddingRight:10, paddingTop:7, paddingBottom:7, border:'1.5px solid #f1f5f9', borderRadius:9, fontSize:12, outline:'none', fontFamily:'inherit', background:'#f8fafc', color:'#0f172a' }}/>
+            </div>
+            {[{v:'all',l:'All'},{v:'active',l:'Active'},{v:'pending',l:'Pending'},{v:'completed',l:'Done'}].map(f=>(
+              <button key={f.v} onClick={()=>setReqFilter(f.v)}
+                style={{ padding:'6px 12px', borderRadius:8, border:`1.5px solid ${reqFilter===f.v?'#3b82f6':'#f1f5f9'}`, background:reqFilter===f.v?'#eff6ff':'#fff', color:reqFilter===f.v?'#1d4ed8':'#64748b', fontSize:12, fontWeight:600, cursor:'pointer' }}>{f.l}</button>
+            ))}
+          </div>
+
+          <div style={{ padding:'14px 14px' }}>
+            {reqLoading ? (
+              <div style={{ textAlign:'center', padding:'36px', color:'#94a3b8', fontSize:13 }}>Loading your requests…</div>
+            ) : filteredReqs.length > 0 ? (
+              filteredReqs.map((req:any) => <ReqCard key={req.id} req={req} onViewExpert={id=>window.open(`/expert/${id}`,'_blank')}/>)
+            ) : reqArr.length === 0 ? (<>
+              <div style={{ textAlign:'center', padding:'36px 20px' }}>
+                <div style={{ fontSize:44, marginBottom:12 }}>📋</div>
+                <h4 style={{ fontWeight:800, fontSize:14, color:'#374151', margin:'0 0 6px' }}>No hire requests yet</h4>
+                <p style={{ fontSize:13, color:'#94a3b8', margin:'0 0 16px' }}>Browse experts and submit your first hire request.</p>
+                <button onClick={()=>window.open('/','_self')} style={{ padding:'10px 20px', borderRadius:10, background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer' }}>Browse Experts →</button>
+              </div>
+              <div style={{ padding:'10px', background:'#f8fafc', borderRadius:12, border:'1px dashed #e2e8f0', marginTop:8 }}>
+                <div style={{ fontSize:11, color:'#94a3b8', textAlign:'center', marginBottom:8 }}>Preview — how your requests will appear:</div>
+                {demoReqs.map((req:any) => <ReqCard key={req.id} req={req} onViewExpert={()=>{}}/>)}
+              </div>
+            </>) : (
+              <div style={{ textAlign:'center', padding:'28px', color:'#94a3b8', fontSize:13 }}>No requests match your filter</div>
+            )}
+          </div>
+        </div>
+
+        {/* Sidebar */}
+        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+          {/* Admin SLA */}
+          <div style={{ background:'linear-gradient(135deg,#0f172a,#1e3a5f)', borderRadius:18, padding:'18px' }}>
+            <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.4)', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:12 }}>Admin Response SLA</div>
+            {[
+              {l:'First response',v:'≤ 1 hr',col:'#60a5fa'},
+              {l:'Expert match',v:'≤ 4 hrs',col:'#34d399'},
+              {l:'Session confirm',v:'≤ 6 hrs',col:'#a78bfa'},
+              {l:'Post-session',v:'Same day',col:'#fbbf24'},
+            ].map(s=>(
+              <div key={s.l} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:9 }}>
+                <span style={{ fontSize:12, color:'rgba(255,255,255,0.5)' }}>{s.l}</span>
+                <span style={{ fontSize:12, fontWeight:800, color:s.col }}>{s.v}</span>
+              </div>
+            ))}
+            <div style={{ marginTop:10, padding:'9px 11px', background:'rgba(255,255,255,0.05)', borderRadius:9, fontSize:11, color:'rgba(255,255,255,0.35)', lineHeight:1.6 }}>
+              Email sent at every status change. Check spam if not received.
+            </div>
+          </div>
+
+          {/* Upcoming sessions */}
+          <div style={{ background:'#fff', borderRadius:16, border:'1.5px solid #f1f5f9', padding:'16px', boxShadow:'0 2px 8px rgba(0,0,0,0.04)' }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+              <h4 style={{ fontWeight:800, fontSize:13, color:'#0f172a', margin:0 }}>Upcoming sessions</h4>
+              <Calendar size={14} color="#64748b"/>
+            </div>
+            {upcomingMeetings.length === 0
+              ? <div style={{ textAlign:'center', padding:'16px 0', color:'#94a3b8', fontSize:12 }}>No upcoming sessions</div>
+              : upcomingMeetings.map((m:any) => (
+                <div key={m.id} style={{ padding:'9px 11px', background:'#f8fafc', borderRadius:10, marginBottom:7 }}>
+                  <div style={{ fontWeight:700, fontSize:12, color:'#0f172a', marginBottom:2 }}>{m.freelancerName||'Expert'}</div>
+                  <div style={{ fontSize:11, color:'#64748b' }}>{m.scheduledAt ? new Date(m.scheduledAt).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '—'}</div>
+                  {m.meetingLink && <a href={m.meetingLink} target="_blank" rel="noreferrer" style={{ fontSize:11, color:'#3b82f6', fontWeight:600, display:'block', marginTop:4 }}>Join →</a>}
+                </div>
+              ))
+            }
+          </div>
+
+          {/* Active projects */}
+          {activeProjects.length > 0 && (
+            <div style={{ background:'#fff', borderRadius:16, border:'1.5px solid #f1f5f9', padding:'16px', boxShadow:'0 2px 8px rgba(0,0,0,0.04)' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+                <h4 style={{ fontWeight:800, fontSize:13, color:'#0f172a', margin:0 }}>Active projects</h4>
+                <button onClick={()=>navigate('/client/projects')} style={{ fontSize:11, color:'#3b82f6', fontWeight:600, background:'none', border:'none', cursor:'pointer' }}>View all</button>
+              </div>
+              {activeProjects.slice(0,3).map((p:any) => (
+                <div key={p.id} style={{ marginBottom:10 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
+                    <div style={{ fontWeight:700, fontSize:12, color:'#0f172a' }}>{p.name}</div>
+                    <div style={{ fontSize:12, fontWeight:700 }}>{fmt(p.totalBudget,p.currency)}</div>
+                  </div>
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <div style={{ flex:1, height:5, borderRadius:3, background:'#f1f5f9' }}>
+                      <div style={{ height:'100%', borderRadius:3, background:'linear-gradient(90deg,#3b82f6,#6366f1)', width:`${p.progress||0}%` }}/>
+                    </div>
+                    <span style={{ fontSize:10, color:'#64748b', fontWeight:600 }}>{p.progress||0}%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Help links */}
+          <div style={{ background:'#f8fafc', borderRadius:14, padding:'14px', border:'1px solid #f1f5f9' }}>
+            <div style={{ fontSize:12, fontWeight:700, color:'#374151', marginBottom:9 }}>Need help?</div>
+            {[
+              {l:'WhatsApp support',href:'https://wa.me/919441363687',icon:'💬'},
+              {l:'Email admin',href:'mailto:help@worksupport360.com',icon:'📧'},
+              {l:'Browse more experts',href:'/',icon:'🔍'},
+            ].map(l=>(
+              <a key={l.l} href={l.href} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 11px', borderRadius:9, background:'#fff', border:'1px solid #f1f5f9', fontSize:12, color:'#374151', fontWeight:500, textDecoration:'none', marginBottom:7, transition:'all .15s' }}
+                onMouseEnter={e=>{e.currentTarget.style.borderColor='#bfdbfe';e.currentTarget.style.color='#1d4ed8';}}
+                onMouseLeave={e=>{e.currentTarget.style.borderColor='#f1f5f9';e.currentTarget.style.color='#374151';}}>
+                <span>{l.icon}</span>{l.l}
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+// ── CLIENT: My Posted Requirements ───────────────────────────
+export const ClientRequirements: React.FC = () => {
+  const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const qc = useQueryClient();
+  const [editId, setEditId] = useState<string|null>(null);
+  const [editForm, setEditForm] = useState<any>({});
+  const [saving, setSaving] = useState(false);
+
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['client-requirements'],
+    queryFn: () => requirementsApi.getMine().then((r: any) => r.data?.items ?? r.data ?? []),
+  });
+
+  const reqs = Array.isArray(data) ? data : [];
+
+  const STATUS_CFG: Record<string, { label: string; color: string; bg: string; icon: string }> = {
+    pending:   { label:'Under Review',  color:'#d97706', bg:'#fffbeb', icon:'⏳' },
+    open:      { label:'Live on Board', color:'#059669', bg:'#ecfdf5', icon:'🟢' },
+    allocated: { label:'Expert Assigned',color:'#7c3aed', bg:'#f5f3ff', icon:'✅' },
+    rejected:  { label:'Rejected',      color:'#dc2626', bg:'#fef2f2', icon:'❌' },
+    closed:    { label:'Closed',        color:'#64748b', bg:'#f8fafc', icon:'🔒' },
+  };
+
+  const handleEdit = (req: any) => {
+    setEditId(req.id);
+    setEditForm({
+      title: req.title || '',
+      skillsRequired: req.skillsRequired || '',
+      hoursPerEngagement: req.hoursPerEngagement || '',
+      budgetMin: req.budgetMin || '',
+      budgetMax: req.budgetMax || '',
+      currency: req.currency || 'INR',
+      workMode: req.workMode || 'remote',
+      description: req.description || '',
+      urgency: req.urgency || 'normal',
+    });
+  };
+
+  const handleSave = async () => {
+    if (!editId) return;
+    setSaving(true);
+    try {
+      await requirementsApi.update(editId, editForm);
+      toast.success('Requirement updated!');
+      setEditId(null);
+      refetch();
+    } catch { toast.error('Failed to update'); }
+    setSaving(false);
+  };
+
+  const handleDelete = async (id: string, status: string) => {
+    if (status === 'allocated') { toast.error('Cannot delete — expert already assigned'); return; }
+    if (!window.confirm('Delete this requirement? This cannot be undone.')) return;
+    try {
+      await requirementsApi.remove(id);
+      toast.success('Requirement deleted');
+      refetch();
+    } catch { toast.error('Failed to delete'); }
+  };
+
+  const inp = "w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-black text-gray-900">My Requirements</h1>
+          <p className="text-sm text-gray-500">Track, edit, and manage your posted requirements</p>
+        </div>
+        <button onClick={() => navigate('/post-requirement')}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-bold"
+          style={{ background:'linear-gradient(135deg,#059669,#10b981)', boxShadow:'0 3px 12px rgba(5,150,105,0.35)' }}>
           + Post New Requirement
         </button>
       </div>
 
-      {requirements.length === 0 ? (
-        <div style={{background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:18,padding:'32px',textAlign:'center'}}>
-          <div style={{fontSize:40,marginBottom:12}}>📋</div>
-          <div style={{fontWeight:700,fontSize:15,color:'#374151',marginBottom:6}}>No requirements posted yet</div>
-          <div style={{fontSize:13,color:'#64748b',marginBottom:16}}>Post a requirement and our admin team will assign the right expert within 4 hours</div>
-          <button onClick={()=>navigate('/client/post-requirement')}
-            style={{padding:'10px 24px',borderRadius:12,background:'linear-gradient(135deg,#6366f1,#8b5cf6)',color:'#fff',border:'none',fontSize:13,fontWeight:700,cursor:'pointer'}}>
-            Post your first requirement
+      {isLoading ? (
+        <div className="text-center py-16 text-gray-400">Loading your requirements…</div>
+      ) : reqs.length === 0 ? (
+        <div className="bg-white border border-gray-100 rounded-2xl p-12 text-center shadow-sm">
+          <div className="text-5xl mb-4">📋</div>
+          <h3 className="font-black text-gray-900 text-lg mb-2">No requirements posted yet</h3>
+          <p className="text-gray-500 text-sm mb-6">Post your first IT requirement — admin will review and match you with a verified expert.</p>
+          <button onClick={() => navigate('/post-requirement')}
+            className="px-6 py-3 rounded-xl text-white font-bold text-sm"
+            style={{ background:'linear-gradient(135deg,#059669,#10b981)' }}>
+            Post a Requirement →
           </button>
         </div>
       ) : (
-        <div style={{display:'flex',flexDirection:'column',gap:10}}>
-          {requirements.map((r:any) => {
-            const sc  = STATUS_CFG[r.status] || STATUS_CFG.open;
-            const ass: any[] = r.assignments ?? [];
-            const interested = ass.filter((a:any) => a.status === 'interested');
-            const isExpanded = expandedId === r.id;
+        <div className="space-y-4">
+          {reqs.map((req: any) => {
+            const cfg = STATUS_CFG[req.status] || STATUS_CFG.pending;
+            const isEditing = editId === req.id;
+            const canEdit = ['pending', 'open'].includes(req.status);
+            const canDelete = !['allocated'].includes(req.status);
 
             return (
-              <div key={r.id} style={{background:'#fff',border:`1.5px solid ${interested.length>0?'#86efac':isExpanded?'#c7d2fe':'#e2e8f0'}`,borderRadius:16,overflow:'hidden',transition:'all .2s',boxShadow:'0 1px 4px rgba(0,0,0,0.05)'}}>
-                {/* Card header */}
-                <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',padding:'13px 16px',borderBottom:isExpanded?'1px solid #f1f5f9':'none',background:interested.length>0?'#f0fdf4':'#fff',gap:10,cursor:'pointer'}}
-                  onClick={()=>setExpandedId(isExpanded?null:r.id)}>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:5}}>
-                      <span style={{fontWeight:800,fontSize:14,color:'#0f172a'}}>{r.title}</span>
-                      <span style={{fontSize:11,fontWeight:700,padding:'2px 9px',borderRadius:8,background:sc.bg,color:sc.color}}>{sc.label}</span>
-                      {interested.length>0&&<span style={{fontSize:11,fontWeight:700,padding:'2px 9px',borderRadius:8,background:'#dcfce7',color:'#15803d'}}>🎉 {interested.length} Expert interested!</span>}
+              <div key={req.id} className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+                {/* Header */}
+                <div className="p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+                        style={{ background: cfg.bg }}>{cfg.icon}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="font-black text-gray-900">{req.title}</span>
+                          <span className="text-xs font-bold px-2.5 py-0.5 rounded-full"
+                            style={{ background: cfg.bg, color: cfg.color }}>
+                            {cfg.label}
+                          </span>
+                          {req.urgency === 'urgent' && <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">🔥 Urgent</span>}
+                        </div>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                          <span>🛠 {req.skillsRequired}</span>
+                          <span>⏱ {req.hoursPerEngagement} hrs</span>
+                          <span>💰 {req.currency}{req.budgetMin}–{req.currency}{req.budgetMax}/hr</span>
+                          <span>🌐 {req.workMode}</span>
+                          <span>📅 Posted {req.createdAt ? new Date(req.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : '—'}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div style={{fontSize:12,color:'#64748b',display:'flex',flexWrap:'wrap',gap:'3px 12px'}}>
-                      <span>💰 {cur(r)}{r.budgetMin}–{cur(r)}{r.budgetMax} ({r.budgetType})</span>
-                      <span>🏠 {r.workMode}</span>
-                      <span>🤝 {r.engagementType}</span>
-                      <span>👥 {r.openPositions} pos.</span>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {canEdit && (
+                        <button onClick={() => isEditing ? setEditId(null) : handleEdit(req)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${isEditing ? 'bg-gray-100 text-gray-600 border-gray-200' : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'}`}>
+                          {isEditing ? '✕ Cancel' : '✏️ Edit'}
+                        </button>
+                      )}
+                      {canDelete && (
+                        <button onClick={() => handleDelete(req.id, req.status)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100">
+                          🗑 Delete
+                        </button>
+                      )}
                     </div>
                   </div>
-                  <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
-                    <span style={{fontSize:11,color:'#94a3b8'}}>{new Date(r.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</span>
-                    <span style={{fontSize:14,color:'#94a3b8',transition:'transform .2s',display:'inline-block',transform:isExpanded?'rotate(180deg)':'none'}}>▾</span>
+
+                  {/* Status message */}
+                  <div className="mt-3 text-xs rounded-xl px-3 py-2" style={{ background: cfg.bg, color: cfg.color }}>
+                    {req.status === 'pending' && "⏳ Your requirement is under admin review. You'll be notified by email once approved and live."}
+                    {req.status === 'open' && '🟢 Live on the freelancer job board. Freelancers are reviewing and applying.'}
+                    {req.status === 'allocated' && '✅ An expert has been assigned! Admin will contact you to schedule the session.'}
+                    {req.status === 'rejected' && '❌ This requirement was rejected by admin.' + (req.adminNotes ? ` Reason: ${req.adminNotes}` : ' Contact support for details.')}
+                    {req.status === 'closed' && '🔒 This requirement has been closed.'}
                   </div>
                 </div>
 
-                {/* Expanded view */}
-                {isExpanded && (
-                  <div style={{padding:'14px 16px'}}>
-                    {/* Assignment status */}
-                    <div style={{marginBottom:14}}>
-                      <div style={{fontSize:11,fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:8}}>
-                        Assigned Experts ({ass.length})
-                        {ass.length===0&&<span style={{marginLeft:8,fontWeight:500,textTransform:'none',color:'#f97316'}}>— Admin is reviewing and will assign experts shortly</span>}
+                {/* Edit form */}
+                {isEditing && (
+                  <div className="border-t border-gray-100 p-5 bg-gray-50 space-y-4">
+                    <h4 className="font-bold text-gray-900 text-sm">Edit Requirement</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="col-span-2">
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Title</label>
+                        <input value={editForm.title} onChange={e=>setEditForm({...editForm,title:e.target.value})} className={inp}/>
                       </div>
-                      {ass.length>0&&(
-                        <div style={{display:'flex',flexDirection:'column',gap:8}}>
-                          {ass.map((a:any) => {
-                            const ac = ASSIGN_CFG[a.status] || ASSIGN_CFG.notified;
-                            return(
-                              <div key={a.id} style={{display:'flex',alignItems:'flex-start',gap:10,padding:'11px 13px',borderRadius:12,background:ac.bg,border:`1px solid ${ac.color}25`}}>
-                                <div style={{width:30,height:30,borderRadius:9,background:ac.color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:800,color:'#fff',flexShrink:0}}>
-                                  {(a.freelancerName||'?')[0]}
-                                </div>
-                                <div style={{flex:1,minWidth:0}}>
-                                  <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:4}}>
-                                    <span style={{fontWeight:700,fontSize:13,color:'#0f172a'}}>{a.freelancerName||'Expert'}</span>
-                                    <span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:6,background:'#fff',color:ac.color}}>{ac.label}</span>
-                                  </div>
-                                  {a.status==='interested'&&a.freelancerNote&&(
-                                    <div style={{fontSize:12,color:'#374151',background:'#fff',borderRadius:8,padding:'6px 9px',marginBottom:4,fontStyle:'italic'}}>
-                                      💬 "{a.freelancerNote}"
-                                    </div>
-                                  )}
-                                  {a.status==='interested'&&(
-                                    <div style={{fontSize:11,color:'#059669',fontWeight:600}}>
-                                      🎉 Admin will contact you to schedule a meeting with this expert!
-                                    </div>
-                                  )}
-                                  <div style={{fontSize:11,color:'#94a3b8',marginTop:3}}>
-                                    Assigned {new Date(a.assignedAt||r.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}
-                                    {a.respondedAt&&` · Responded ${new Date(a.respondedAt).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}`}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                      <div className="col-span-2">
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Skills Required</label>
+                        <input value={editForm.skillsRequired} onChange={e=>setEditForm({...editForm,skillsRequired:e.target.value})} className={inp} placeholder="React.js, Node.js, AWS"/>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Hours</label>
+                        <input value={editForm.hoursPerEngagement} onChange={e=>setEditForm({...editForm,hoursPerEngagement:e.target.value})} className={inp} placeholder="e.g. 4"/>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Urgency</label>
+                        <select value={editForm.urgency} onChange={e=>setEditForm({...editForm,urgency:e.target.value})} className={inp}>
+                          <option value="normal">Normal</option>
+                          <option value="urgent">Urgent</option>
+                          <option value="planned">Planned</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Budget Min/hr</label>
+                        <input type="number" value={editForm.budgetMin} onChange={e=>setEditForm({...editForm,budgetMin:e.target.value})} className={inp}/>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Budget Max/hr</label>
+                        <input type="number" value={editForm.budgetMax} onChange={e=>setEditForm({...editForm,budgetMax:e.target.value})} className={inp}/>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Work Mode</label>
+                        <select value={editForm.workMode} onChange={e=>setEditForm({...editForm,workMode:e.target.value})} className={inp}>
+                          <option value="remote">Remote</option>
+                          <option value="hybrid">Hybrid</option>
+                          <option value="onsite">On-site</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Currency</label>
+                        <select value={editForm.currency} onChange={e=>setEditForm({...editForm,currency:e.target.value})} className={inp}>
+                          <option>INR</option><option>USD</option><option>EUR</option>
+                        </select>
+                      </div>
+                      <div className="col-span-2">
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">Description / JD</label>
+                        <textarea value={editForm.description} onChange={e=>setEditForm({...editForm,description:e.target.value})} rows={3} className={inp + " resize-none"}/>
+                      </div>
                     </div>
-
-                    {/* Skills */}
-                    {r.skills&&(
-                      <div style={{marginBottom:10}}>
-                        <div style={{fontSize:11,fontWeight:700,color:'#64748b',textTransform:'uppercase',letterSpacing:'0.05em',marginBottom:6}}>Required Skills</div>
-                        <div style={{display:'flex',flexWrap:'wrap',gap:5}}>
-                          {r.skills.split(',').map((s:string)=>s.trim()).filter(Boolean).map((s:string)=>(
-                            <span key={s} style={{fontSize:11,padding:'3px 9px',borderRadius:7,background:'#f1f5f9',color:'#374151',fontWeight:500}}>{s}</span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Exp + work details */}
-                    <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:10}}>
-                      {[
-                        {l:'Experience',v:`${r.experienceMin||'Any'}–${r.experienceMax||'∞'} yrs`},
-                        {l:'Location',v:r.location||'Remote'},
-                        {l:'Timings',v:r.workTimings||'Flexible'},
-                      ].map(row=>(
-                        <div key={row.l} style={{background:'#f8fafc',borderRadius:10,padding:'9px 11px'}}>
-                          <div style={{fontSize:10,color:'#94a3b8',fontWeight:600,marginBottom:3,textTransform:'uppercase',letterSpacing:'0.04em'}}>{row.l}</div>
-                          <div style={{fontSize:12,color:'#1e293b',fontWeight:600}}>{row.v}</div>
-                        </div>
-                      ))}
+                    <div className="flex gap-3">
+                      <button onClick={handleSave} disabled={saving}
+                        className="flex-1 py-2.5 rounded-xl text-white font-bold text-sm disabled:opacity-50"
+                        style={{ background:'linear-gradient(135deg,#1e3a5f,#3b82f6)' }}>
+                        {saving ? 'Saving…' : '💾 Save Changes'}
+                      </button>
+                      <button onClick={() => setEditId(null)}
+                        className="px-6 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50">
+                        Cancel
+                      </button>
                     </div>
-
-                    {/* Status msg */}
-                    {(r.status==='open'||r.status==='in_progress')&&interested.length===0&&ass.length===0&&(
-                      <div style={{fontSize:12,color:'#f97316',fontWeight:600,background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:10,padding:'9px 12px'}}>
-                        ⏳ Requirement posted — our admin team is reviewing and will assign matched experts shortly.
-                      </div>
-                    )}
-                    {r.status==='closed'&&(
-                      <div style={{fontSize:12,color:'#475569',background:'#f1f5f9',borderRadius:10,padding:'9px 12px'}}>
-                        ✅ This requirement is closed. {r.notes||''}
-                      </div>
-                    )}
+                    <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                      ⚠️ Editing will re-submit for admin review if the requirement is already live.
+                    </p>
                   </div>
                 )}
               </div>
@@ -208,147 +601,6 @@ const ClientRequirementsPanel: React.FC = () => {
           })}
         </div>
       )}
-    </div>
-  );
-};
-
-
-export const ClientDashboard: React.FC = () => {
-  const navigate = useNavigate();
-  const { data: projects = [] } = useProjects();
-  const { data: invoices = [] } = useInvoices();
-  const { data: meetings = [] } = useMeetings();
-  const { data: notifs = [] } = useNotifications();
-  const { data: reqData } = useQuery({
-    queryKey: ['my-requirements-dash'],
-    queryFn: () => import('../../services/api').then(m => m.api.get('/requirements/mine').then((r:any) => r.data)).catch(()=>[]),
-    staleTime: 30000,
-  });
-  const myRequirements: any[] = reqData ?? [];
-  const openReqs = myRequirements.filter((r: any) => r.status === 'open' || r.status === 'in_progress');
-  const interestedReqs = myRequirements.filter((r: any) => (r.assignments ?? []).some((a: any) => a.status === 'interested'));
-
-  const activeProjects = projects.filter((p: any) => p.status === 'active');
-  const pendingInvoices = (invoices as any[]).filter((i: any) => i.status === 'pending' || i.status === 'overdue');
-  const overdueInvoices = (invoices as any[]).filter((i: any) => i.status === 'overdue');
-  const upcomingMeetings = (meetings as any[]).filter((m: any) => m.status === 'upcoming').slice(0, 3);
-  const totalPending = pendingInvoices.reduce((s: number, i: any) => s + (i.total ?? 0), 0);
-
-  return (
-    <div className="space-y-6">
-      {/* Overdue alert */}
-      {overdueInvoices.length > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
-          <AlertCircle size={20} className="text-red-600 shrink-0 mt-0.5"/>
-          <div className="flex-1">
-            <div className="font-bold text-red-900 text-sm">{overdueInvoices.length} overdue invoice{overdueInvoices.length > 1 ? 's' : ''}</div>
-            <div className="text-red-700 text-xs mt-0.5">Total overdue: <strong>${overdueInvoices.reduce((s: number, i: any) => s + i.total, 0).toLocaleString()}</strong> — please pay to avoid project disruption.</div>
-          </div>
-          <button onClick={() => navigate('/client/invoices')} className="shrink-0 text-xs font-bold px-4 py-2 rounded-xl text-white bg-red-600 hover:bg-red-700">Pay now →</button>
-        </div>
-      )}
-
-      {/* Requirements highlight */}
-      {openReqs.length > 0 && (
-        <div style={{ background: 'linear-gradient(135deg,#f0fdf4,#ecfdf5)', border: '1.5px solid #86efac', borderRadius: 20, padding: '18px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ width: 48, height: 48, borderRadius: 16, background: 'linear-gradient(135deg,#059669,#047857)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, boxShadow: '0 4px 14px rgba(5,150,105,0.3)' }}>📋</div>
-            <div>
-              <div style={{ fontWeight: 900, fontSize: 20, color: '#064e3b', letterSpacing: '-0.02em' }}>{openReqs.length} open requirement{openReqs.length > 1 ? 's' : ''}</div>
-              {interestedReqs.length > 0 && <div style={{ fontSize: 13, color: '#059669', fontWeight: 700 }}>🎉 {interestedReqs.length} expert{interestedReqs.length > 1 ? 's' : ''} interested — admin will contact you!</div>}
-              {interestedReqs.length === 0 && <div style={{ fontSize: 12, color: '#6b7280' }}>Admin is reviewing & assigning experts</div>}
-            </div>
-          </div>
-          <button onClick={() => navigate('/client/post-requirement')} style={{ padding: '9px 20px', borderRadius: 12, background: 'linear-gradient(135deg,#059669,#047857)', color: '#fff', border: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(5,150,105,0.3)' }}>
-            + Post New Requirement
-          </button>
-        </div>
-      )}
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: 'Active projects', value: activeProjects.length, icon: <FolderOpen size={18}/>, color: 'text-blue-600', bg: 'bg-blue-50' },
-          { label: 'Pending invoices', value: cur(totalPending), icon: <AlertCircle size={18}/>, color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: 'Upcoming meetings', value: upcomingMeetings.length, icon: <Clock size={18}/>, color: 'text-purple-600', bg: 'bg-purple-50' },
-          { label: 'Invoices to pay', value: pendingInvoices.length, icon: <FileText size={18}/>, color: 'text-red-600', bg: 'bg-red-50' },
-        ].map(s => (
-          <div key={s.label} className="bg-white rounded-2xl border border-gray-100 p-5">
-            <div className={`w-10 h-10 rounded-xl ${s.bg} ${s.color} flex items-center justify-center mb-3`}>{s.icon}</div>
-            <div className="text-2xl font-black text-gray-900">{s.value}</div>
-            <div className="text-xs text-gray-500 mt-0.5">{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Requirements Panel */}
-      <ClientRequirementsPanel/>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Active projects */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-gray-900">Active projects</h3>
-            <button onClick={() => navigate('/client/projects')} className="text-xs text-blue-600 font-medium hover:underline">View all</button>
-          </div>
-          {activeProjects.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">
-              <FolderOpen size={32} className="mx-auto mb-2 opacity-40"/>
-              <div>No active projects</div>
-              <button onClick={() => navigate('/client/browse')} className="mt-2 text-xs text-blue-600 font-medium hover:underline">Browse experts to get started</button>
-            </div>
-          ) : activeProjects.map((p: any) => (
-            <div key={p.id} className="p-4 border border-gray-50 rounded-xl mb-3 hover:border-gray-100 transition-all">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <div className="font-semibold text-sm text-gray-900">{p.name}</div>
-                  <div className="text-xs text-gray-500">{p.freelancerAlias} · Due {new Date(p.endDate).toLocaleDateString()}</div>
-                </div>
-                <div className="text-right">
-                  <div className="font-bold text-sm">{cur(p.totalBudget, p.currency)}</div>
-                  {p.pendingAmount > 0 && <div className="text-xs text-red-600 font-medium">⚠ {cur(p.pendingAmount, p.currency)} pending</div>}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 h-1.5 bg-gray-100 rounded-full"><div className="h-full bg-blue-500 rounded-full" style={{width:`${p.progress}%`}}/></div>
-                <span className="text-xs text-gray-500">{p.progress}%</span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Right panel */}
-        <div className="space-y-4">
-          {/* Pending invoices */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5">
-            <h3 className="font-bold text-gray-900 mb-3">Pending payments</h3>
-            {pendingInvoices.length === 0 ? <div className="text-xs text-gray-400 py-3 text-center">No pending payments</div> :
-              pendingInvoices.slice(0, 3).map((inv: any) => (
-                <div key={inv.id} className={`p-3 rounded-xl mb-2 ${inv.status === 'overdue' ? 'bg-red-50 border border-red-100' : 'bg-amber-50 border border-amber-100'}`}>
-                  <div className="text-xs font-bold text-gray-900">{inv.invoiceNumber}</div>
-                  <div className="text-sm font-black mt-0.5">{cur(inv.total, inv.currency)}{inv.applyGst && <span className="text-xs text-amber-700 ml-1">(incl. GST)</span>}</div>
-                  <div className={`text-xs mt-0.5 ${inv.status === 'overdue' ? 'text-red-600 font-bold' : 'text-amber-700'}`}>Due: {new Date(inv.dueAt).toLocaleDateString()}</div>
-                </div>
-              ))
-            }
-            {pendingInvoices.length > 0 && <button onClick={() => navigate('/client/invoices')} className="w-full mt-2 text-xs text-blue-600 font-medium hover:underline">View all invoices</button>}
-          </div>
-
-          {/* Upcoming meetings */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-5">
-            <h3 className="font-bold text-gray-900 mb-3">Upcoming meetings</h3>
-            {upcomingMeetings.length === 0 ? <div className="text-xs text-gray-400 py-3 text-center">No upcoming meetings</div> :
-              upcomingMeetings.map((m: any) => (
-                <div key={m.id} className="p-3 bg-blue-50 rounded-xl mb-2 text-xs">
-                  <div className="font-semibold text-blue-900">{m.freelancerName}</div>
-                  <div className="text-blue-700">{new Date(m.scheduledAt).toLocaleString()}</div>
-                  {m.meetingLink && <a href={m.meetingLink} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-medium">Join {m.platform}</a>}
-                </div>
-              ))
-            }
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
