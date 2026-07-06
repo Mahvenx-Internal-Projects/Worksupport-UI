@@ -3,40 +3,31 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2, Shield, Zap, Users, ArrowLeft } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import toast from 'react-hot-toast';
-import { useAuthStore, UserRole } from '../../store/authStore';
+import { useAuthStore } from '../../store/authStore';
+import { UserRole } from '../../store/authStore';
 
 const roles: { role: UserRole; label: string; desc: string; icon: React.ReactNode; color: string }[] = [
-  { role: 'client',     label: 'Client',     desc: 'Hire experts & manage projects', icon: <Users size={18}/>,  color: 'border-green-300 bg-green-50 text-green-700' },
-  { role: 'freelancer', label: 'Freelancer',  desc: 'Work on projects, earn money',   icon: <Zap size={18}/>,    color: 'border-blue-300 bg-blue-50 text-blue-700' },
-  { role: 'admin',      label: 'Admin',       desc: 'Manage the entire platform',     icon: <Shield size={18}/>, color: 'border-purple-300 bg-purple-50 text-purple-700' },
+  { role: 'client', label: 'Client', desc: 'Hire experts & manage projects', icon: <Users size={18}/>, color: 'border-green-300 bg-green-50 text-green-700' },
+  { role: 'freelancer', label: 'Freelancer', desc: 'Work on projects, earn money', icon: <Zap size={18}/>, color: 'border-blue-300 bg-blue-50 text-blue-700' },
+  { role: 'admin', label: 'Admin', desc: 'Manage the entire platform', icon: <Shield size={18}/>, color: 'border-purple-300 bg-purple-50 text-purple-700' },
 ];
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { loginWithEmail, loginWithGoogle, isLoading, isAuthenticated, user } = useAuthStore();
-
-  const [email, setEmail]             = useState('');
-  const [password, setPassword]       = useState('');
+  const { loginWithEmail, loginWithGoogle, isLoading } = useAuthStore();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [selectedRole, setSelectedRole] = useState<UserRole>('client');
   const [notVerified, setNotVerified] = useState(false);
   const [unverifiedEmail, setUnverifiedEmail] = useState('');
-  const [resendSent, setResendSent]   = useState(false);
+  const [resendSent, setResendSent] = useState(false);
   const [justRegistered, setJustRegistered] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState('');
   const [activeSession, setActiveSession] = useState<{lastLogin:string;sessionCount:string;email:string}|null>(null);
   const [forceLogging, setForceLogging] = useState(false);
 
-  // ── If already logged in, redirect immediately ─────────────
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      const returnTo = searchParams.get('returnTo');
-      if (returnTo) { navigate(returnTo); return; }
-      redirect(user.role);
-    }
-  }, [isAuthenticated, user]);
-
-  // ── Handle URL params ───────────────────────────────────────
+  // Handle URL params on load
   useEffect(() => {
     if (searchParams.get('verified') === 'true') {
       const em = searchParams.get('email') || '';
@@ -51,37 +42,36 @@ const LoginPage: React.FC = () => {
     }
   }, [searchParams]);
 
-  const redirect = (role: UserRole | string) => {
-    const returnTo = searchParams.get('returnTo');
-    if (returnTo) { navigate(returnTo); return; }
-    if ((role as string) === 'agent')      { navigate('/agent');      return; }
-    if (role === 'admin')                  { navigate('/admin');      return; }
-    else if (role === 'freelancer')        { navigate('/freelancer'); return; }
-    else                                   { navigate('/client');     return; }
-  };
-
   const handleForceLogin = async () => {
     if (!activeSession) return;
     setForceLogging(true);
     try {
       const { default: axiosLib } = await import('axios');
-      const apiUrl = process.env.REACT_APP_API_URL || 'https://localhost:65257';
-      const res = await axiosLib.post(`${apiUrl}/api/auth/force-login`, {
-        email, password, deviceInfo: navigator.userAgent
-      });
+      const apiUrl = process.env.REACT_APP_API_URL || '';
+      const res = await axiosLib.post(`${apiUrl}/api/auth/force-login`, { email, password, deviceInfo: navigator.userAgent });
       const { accessToken, refreshToken, role, name, userId, picture } = res.data;
-      localStorage.setItem('accessToken',  accessToken);
+      localStorage.setItem('accessToken', accessToken);
       localStorage.setItem('refreshToken', refreshToken);
-      localStorage.setItem('userRole',     role);   // ← fixed: was 'role', must be 'userRole'
-      localStorage.setItem('userName',     name);   // ← fixed: was 'name', must be 'userName'
-      localStorage.setItem('userId',       userId);
-      if (picture) localStorage.setItem('userPicture', picture);
+      localStorage.setItem('role', role); localStorage.setItem('name', name);
+      localStorage.setItem('userId', userId);
+      if (picture) localStorage.setItem('picture', picture);
       setActiveSession(null);
       toast.success('✅ Previous session ended. Logged in successfully!');
-      redirect(role);
-    } catch {
+      redirect(role as any);
+    } catch (err: any) {
       toast.error('Force login failed. Please try again.');
     } finally { setForceLogging(false); }
+  };
+
+  const redirect = (role: UserRole) => {
+    // Check if there's a returnTo param (e.g. user was booking quick support)
+    const returnTo = searchParams.get('returnTo');
+    if (returnTo) { navigate(returnTo); return; }
+    // Normal redirect to dashboard
+    if ((role as string) === 'agent') { navigate('/agent'); return; }
+    if (role === 'admin') navigate('/admin');
+    else if (role === 'freelancer') navigate('/freelancer');
+    else navigate('/client');
   };
 
   const handleEmailLogin = async (e: React.FormEvent) => {
@@ -89,29 +79,21 @@ const LoginPage: React.FC = () => {
     if (!email || !password) { toast.error('Enter email and password'); return; }
     try {
       await loginWithEmail(email, password);
-      // After loginWithEmail, store is updated — read role from store state
-      const { user: u } = useAuthStore.getState();
-      redirect(u?.role || (localStorage.getItem('userRole') as UserRole));
+      const role = localStorage.getItem('userRole') as UserRole;
+      redirect(role);
     } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.response?.data || '';
-      if (typeof msg === 'string' && msg.toLowerCase().includes('verif')) {
-        setUnverifiedEmail(email);
-        setNotVerified(true);
-      } else if (typeof msg === 'string' && msg.toLowerCase().includes('session')) {
-        setActiveSession({ lastLogin: '', sessionCount: '1', email });
-      } else {
-        toast.error(typeof msg === 'string' && msg ? msg : 'Invalid email or password');
-      }
+      toast.error(err?.response?.data?.message || 'Invalid email or password');
     }
   };
 
   const googleLogin = useGoogleLogin({
     onSuccess: async (response) => {
       try {
+        // Exchange the auth code for an ID token via backend
         const result = await loginWithGoogle(response.access_token);
-        const { user: u } = useAuthStore.getState();
+        const role = localStorage.getItem('userRole') as UserRole;
         if (result?.isNewUser) toast.success('Welcome to WorkSupport360!');
-        redirect(u?.role || (localStorage.getItem('userRole') as UserRole));
+        redirect(role);
       } catch {
         toast.error('Google sign-in failed. Please try again.');
       }
@@ -126,14 +108,15 @@ const LoginPage: React.FC = () => {
         <div className="absolute inset-0 opacity-5">
           {Array.from({ length: 12 }).map((_, i) => (
             <div key={i} className="absolute border border-white rounded-full"
-              style={{ width:`${(i+1)*80}px`, height:`${(i+1)*80}px`, top:'50%', left:'50%', transform:'translate(-50%,-50%)' }}/>
+              style={{ width:`${(i+1)*80}px`, height:`${(i+1)*80}px`, top:'50%', left:'50%', transform:'translate(-50%,-50%)' }} />
           ))}
         </div>
         <div className="flex items-center justify-between">
-          <div className="text-white font-bold text-2xl">Work<span className="text-orange-400">Support</span><span className="opacity-60">360</span></div>
-          <button onClick={() => navigate('/')} className="flex items-center gap-1.5 text-sm text-blue-200 hover:text-white transition-colors">
-            <ArrowLeft size={14}/> Back to home
+          <button onClick={()=>navigate('/')} style={{ display:'flex', alignItems:'center', gap:8, background:'none', border:'none', cursor:'pointer', padding:0 }}>
+            <div style={{ width:32, height:32, borderRadius:9, background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:900, fontSize:12, color:'#fff' }}>WS</div>
+            <span style={{ fontWeight:800, fontSize:16, color:'#fff', letterSpacing:'-0.02em' }}>WorkSupport<span style={{ color:'#60a5fa' }}>360</span></span>
           </button>
+          
         </div>
         <div>
           <h1 className="text-4xl font-semibold text-white leading-tight mb-5">
@@ -151,15 +134,15 @@ const LoginPage: React.FC = () => {
             ))}
           </div>
         </div>
-        <div className="text-blue-300 text-xs">© 2025 WorkSupport360</div>
+        <div className="text-blue-300 text-xs">© 2025 Mahvenx IT Solutions</div>
       </div>
 
       {/* Right login panel */}
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="bg-white rounded-2xl shadow-2xl p-8">
-            <div style={{ display:'flex', justifyContent:'flex-start', marginBottom:12 }}>
-              <button onClick={()=>navigate('/')} style={{ display:'flex', alignItems:'center', gap:5, fontSize:13, fontWeight:600, color:'#64748b', background:'none', border:'none', cursor:'pointer', padding:'6px 0' }}>
+            <div style={{ marginBottom:10 }}>
+              <button onClick={()=>navigate('/')} style={{ display:'flex', alignItems:'center', gap:5, fontSize:13, fontWeight:600, color:'#64748b', background:'none', border:'none', cursor:'pointer', padding:'4px 0' }}>
                 ← Back to home
               </button>
             </div>
@@ -169,7 +152,7 @@ const LoginPage: React.FC = () => {
             </div>
 
             {/* Role selector */}
-            <div className="mb-6">
+            {/* <div className="mb-6">
               <div className="text-xs font-medium text-gray-500 mb-3">Signing in as</div>
               <div className="grid grid-cols-3 gap-2">
                 {roles.map(r => (
@@ -181,10 +164,10 @@ const LoginPage: React.FC = () => {
                   </button>
                 ))}
               </div>
-            </div>
+            </div> */}
 
             {/* Google */}
-            <button type="button" onClick={() => googleLogin()}
+            {/* <button type="button" onClick={() => googleLogin()}
               className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all mb-4">
               <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
               Continue with Google
@@ -192,27 +175,31 @@ const LoginPage: React.FC = () => {
 
             <div className="flex items-center gap-3 mb-4">
               <div className="flex-1 h-px bg-gray-100"/><span className="text-xs text-gray-400">or email</span><div className="flex-1 h-px bg-gray-100"/>
-            </div>
+            </div> */}
 
-            {/* Just Registered Banner */}
+            {/* ── Just Registered Banner ── */}
             {justRegistered && (
               <div className="mb-4 rounded-2xl overflow-hidden border border-blue-200">
                 <div className="bg-blue-50 px-5 py-4">
                   <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center shrink-0 mt-0.5"><span className="text-base">🎉</span></div>
+                    <div className="w-8 h-8 rounded-xl bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="text-base">🎉</span>
+                    </div>
                     <div>
                       <div className="font-black text-blue-900 text-sm mb-1">Account created! Check your email</div>
                       <div className="text-blue-700 text-xs leading-relaxed">
-                        We sent a verification link to <strong>{registeredEmail}</strong>. Click it to activate your account, then come back to log in.
+                        We sent a verification link to <strong>{registeredEmail}</strong>. Click the link in that email to activate your account, then come back here to log in.
                       </div>
-                      <div className="text-blue-500 text-xs mt-2 flex items-center gap-1"><span>📁</span> Don't see it? Check your spam/junk folder.</div>
+                      <div className="text-blue-500 text-xs mt-2 flex items-center gap-1">
+                        <span>📁</span> Don't see it? Check your spam/junk folder.
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Active Session Banner */}
+            {/* ── Active Session Banner ── */}
             {activeSession && (
               <div className="mb-4 rounded-2xl overflow-hidden border border-orange-200">
                 <div className="bg-orange-50 px-5 py-4">
@@ -221,12 +208,14 @@ const LoginPage: React.FC = () => {
                     <div>
                       <div className="font-black text-orange-900 text-sm mb-1">Already logged in on another device</div>
                       <div className="text-orange-700 text-xs leading-relaxed">
+                        Your account is currently active in another browser or device.<br/>
+                        Last login: <strong>{activeSession.lastLogin ? new Date(activeSession.lastLogin).toLocaleString() : 'recently'}</strong><br/>
                         Active sessions: <strong>{activeSession.sessionCount}</strong>
                       </div>
                     </div>
                   </div>
                   <div className="bg-orange-100 rounded-xl p-3 text-xs text-orange-800 mb-3">
-                    ⚠️ If you continue, the existing session will be <strong>immediately logged out</strong>.
+                    ⚠️ If you continue, the existing session will be <strong>immediately logged out</strong>. Any unsaved work on that device will be lost.
                   </div>
                   <div className="flex gap-2 flex-wrap">
                     <button type="button" disabled={forceLogging} onClick={handleForceLogin}
@@ -242,16 +231,18 @@ const LoginPage: React.FC = () => {
               </div>
             )}
 
-            {/* Email Not Verified Banner */}
+            {/* ── Email Not Verified Banner ── */}
             {notVerified && (
               <div className="mb-4 rounded-2xl overflow-hidden border border-amber-200">
                 <div className="bg-amber-50 px-5 py-4">
                   <div className="flex items-start gap-3 mb-3">
-                    <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 mt-0.5"><span className="text-base">📧</span></div>
+                    <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="text-base">📧</span>
+                    </div>
                     <div>
                       <div className="font-black text-amber-900 text-sm mb-1">Account not activated yet</div>
                       <div className="text-amber-700 text-xs leading-relaxed">
-                        Check your inbox for <strong>{unverifiedEmail}</strong> and click the verification link.
+                        We sent a verification link to <strong>{unverifiedEmail}</strong> when you registered. Please check your inbox (and spam folder) and click the link to activate your account.
                       </div>
                     </div>
                   </div>
@@ -259,11 +250,14 @@ const LoginPage: React.FC = () => {
                     {!resendSent ? (
                       <button type="button" onClick={async () => {
                         try {
+                          // Call resend verification endpoint
                           const { default: axios } = await import('axios');
-                          await axios.post(`${process.env.REACT_APP_API_URL || 'https://localhost:65257'}/api/auth/resend-verification`, { email: unverifiedEmail });
+                          await axios.post(`${process.env.REACT_APP_API_URL}/api/auth/resend-verification`, { email: unverifiedEmail });
                           setResendSent(true);
-                          toast.success('Verification email resent!');
-                        } catch { toast.error('Failed to resend. Contact help@worksupport360.com'); }
+                          toast.success('Verification email resent! Check your inbox.');
+                        } catch {
+                          toast.error('Failed to resend. Please contact help@worksupport360.com');
+                        }
                       }} className="text-xs font-black text-white bg-amber-500 hover:bg-amber-600 px-4 py-2 rounded-xl transition-all">
                         Resend verification email
                       </button>
@@ -302,11 +296,10 @@ const LoginPage: React.FC = () => {
               <button onClick={() => navigate('/register')} className="text-xs text-blue-600 font-medium hover:text-blue-800">Register here</button>
             </div>
 
+            {/* Dev hint */}
             <div className="mt-4 bg-blue-50 rounded-xl p-3 text-xs text-blue-700">
-              <div className="font-semibold mb-1">Demo accounts:</div>
-              <div>admin@worksupport360.com / Admin@123!</div>
-              <div>rahul@example.com / Test@123! (freelancer)</div>
-              <div>john@abccorp.com / Test@123! (client)</div>
+              
+              
             </div>
           </div>
         </div>

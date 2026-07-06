@@ -4,7 +4,7 @@ import {
   ArrowRight, CheckCircle, Star, Send, UserPlus, FileText,
   Clock, Users, TrendingUp, Award, Code2, Cloud, GitBranch,
   Database, Smartphone, Shield, Search,
-  Globe, Lock, BarChart3, Terminal, Cpu
+  Globe, Lock, BarChart3, Terminal, Cpu, MapPin
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useFeaturedFreelancers, usePublicRequirements } from '../../hooks/useApi';
@@ -49,27 +49,27 @@ const HOURS = [
 const STATS = [
   { n:'1,240+', l:'Verified MNC engineers', icon:<Users size={18}/> },
   { n:'98%',    l:'Client satisfaction',    icon:<Star size={18}/> },
-  { n:'4 hrs',  l:'Average match time',     icon:<Clock size={18}/> },
+  { n:'Fast',  l:'Average match time',     icon:<Clock size={18}/> },
   { n:'₹2.4Cr', l:'Paid to freelancers',    icon:<TrendingUp size={18}/> },
 ];
 
 const STEPS = [
   { n:'01', t:'Post your requirement',    d:'Describe the stack, problem, and hours needed. Takes under 2 minutes.' },
-  { n:'02', t:'We match the right expert', d:'Admin reviews and assigns a background-verified MNC engineer within 4 hours.' },
+  { n:'02', t:'We match the right expert', d:'Admin reviews and assigns a background-verified MNC engineer promptly.' },
   { n:'03', t:'Expert joins live',         d:'Remote screen share or on-site — they debug, build, or architect alongside you.' },
   { n:'04', t:'Pay only for hours used',   d:'Billed by the hour. GST invoice. No retainer, no surprise fees.' },
 ];
 
 const TESTIMONIALS = [
-  { q:'Got a React expert in 4 hours who fixed a critical production bug our team had been stuck on for 3 days. Paid for 2 hours. Phenomenal value.', n:'Ramesh K.', c:'CTO · Fintech startup, Hyderabad', r:5 },
+  { q:'Got a React expert soon who fixed a critical production bug our team had been stuck on for 3 days. Paid for 2 hours. Phenomenal value.', n:'Ramesh K.', c:'CTO · Fintech startup, Hyderabad', r:5 },
   { q:'Our Kubernetes cluster was down. A DevOps engineer joined within hours, diagnosed the issue live on a call, and had us back up in 90 minutes.', n:'Anjali R.', c:'VP Engineering · SaaS company, Bangalore', r:5 },
   { q:'I was skeptical about hourly freelancers, but this is completely different. The engineer was senior, focused, and delivered exactly what we scoped.', n:'Vikram S.', c:'Founder · E-commerce platform, Mumbai', r:5 },
 ];
 
 const FAQS = [
   { q:'Are these real MNC employees or just freelancers?', a:'All experts are employed full-time at top MNCs — Infosys, TCS, Wipro, HCL, Cognizant, Accenture. They work with you during their evenings and weekends under a privacy alias. Their employer is never notified.' },
-  { q:'How quickly can I get an expert?', a:'Most requests are matched and confirmed within 4 hours. For urgent issues in metro cities, we can often arrange 1–2 hour turnarounds.' },
-  { q:'What if the expert can\'t solve my problem?', a:'You pay only for productive time. If the session doesn\'t meet your expectations, flag it within 24 hours and we\'ll either rematch you with another expert or issue a credit.' },
+  { q:'How quickly can I get an expert?', a:'Most requests are matched and confirmed promptly. For urgent issues in metro cities, we can often arrange 1–2 hour turnarounds.' },
+  { q:'What if the expert can\'t solve my problem?', a:'You pay only for productive time. If the session doesn\'t meet your expectations, flag it within 2soon and we\'ll either rematch you with another expert or issue a credit.' },
   { q:'Can I request the same expert again?', a:'Yes. You can request a specific expert by name for future bookings, subject to their availability.' },
   { q:'How does billing work?', a:'You\'re billed for actual hours worked. After the session, you receive a GST-compliant invoice. We support bank transfer, UPI, and corporate credit cards.' },
   { q:'Is there a monthly fee or subscription?', a:'None. Pure pay-as-you-go. Post a requirement when you need it, pay for what you use. No lock-in, no retainer.' },
@@ -129,12 +129,12 @@ const PostRequirementForm: React.FC<{ onClose: () => void }> = ({ onClose }) => 
     <div style={{ padding:'44px 28px',textAlign:'center' }}>
       <div style={{ width:72,height:72,borderRadius:'50%',background:'linear-gradient(135deg,#22c55e,#16a34a)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 18px',fontSize:32 }}>✓</div>
       <h3 style={{ fontWeight:900,fontSize:22,color:'#0f172a',margin:'0 0 10px' }}>Requirement submitted! 🎉</h3>
-      <p style={{ fontSize:14,color:'#475569',lineHeight:1.75,margin:'0 0 20px' }}>Our admin team will review your requirement and post it for freelancers within <strong>4 hours</strong>. You'll receive a confirmation email once published.</p>
+      <p style={{ fontSize:14,color:'#475569',lineHeight:1.75,margin:'0 0 20px' }}>Our admin team will review your requirement and post it for freelancers within <strong>soon</strong>. You'll receive a confirmation email once published.</p>
       <div style={{ background:'#f8fafc',borderRadius:16,padding:'16px',marginBottom:20,textAlign:'left' }}>
         {[
           {n:'1',t:'Admin reviews & approves',d:'Within 2 hours'},
-          {n:'2',t:'Posted to freelancer job board',d:'Within 4 hours'},
-          {n:'3',t:'Freelancers apply',d:'Within 24 hours'},
+          {n:'2',t:'Posted to freelancer job board',d:'Withsoon'},
+          {n:'3',t:'Freelancers apply',d:'Within 2soon'},
           {n:'4',t:'Admin matches & assigns best fit',d:'Within 48 hours'},
         ].map(s=>(
           <div key={s.n} style={{ display:'flex',alignItems:'flex-start',gap:12,marginBottom:10 }}>
@@ -169,7 +169,7 @@ const PostRequirementForm: React.FC<{ onClose: () => void }> = ({ onClose }) => 
             <option value="">Select hours…</option>
             <option value="1">1 hour (Quick fix)</option>
             <option value="2">2 hours</option>
-            <option value="4">4 hours (Half day)</option>
+            <option value="4">soon (Half day)</option>
             <option value="8">8 hours (Full day)</option>
             <option value="20">20 hrs/week</option>
             <option value="40">40 hrs/week (Full time)</option>
@@ -252,13 +252,13 @@ const PostRequirementForm: React.FC<{ onClose: () => void }> = ({ onClose }) => 
 
       {/* Notice */}
       <div style={{ background:'#f0fdf4',border:'1px solid #86efac',borderRadius:12,padding:'11px 14px',fontSize:12,color:'#15803d' }}>
-        ✅ After submitting, admin reviews and publishes to the job board within 4 hours. Freelancers then apply and admin assigns the best match to you.
+        ✅ After submitting, admin reviews and publishes to the job board promptly. Freelancers then apply and admin assigns the best match to you.
       </div>
 
       {/* Submit */}
       <button onClick={handleSubmit} disabled={submitting}
         style={{ padding:'14px',borderRadius:13,background:submitting?'#f1f5f9':'linear-gradient(135deg,#059669,#10b981)',color:submitting?'#94a3b8':'#fff',border:'none',fontSize:15,fontWeight:700,cursor:submitting?'not-allowed':'pointer',boxShadow:submitting?'none':'0 4px 16px rgba(5,150,105,0.35)' }}>
-        {submitting?'⏳ Submitting…':'📋 Submit Requirement — Admin reviews within 4 hrs'}
+        {submitting?'⏳ Submitting…':'📋 Submit Requirement'}
       </button>
     </div>
   );
@@ -271,13 +271,16 @@ export default function HomePage() {
   const [selH, setSelH] = useState('4');
   const [faqOpen, setFaqOpen] = useState<number | null>(0);
   const [skillSearch, setSkillSearch] = useState('');
-  const [form, setForm] = useState({ name:'', mobile:'', skill:'', note:'' });
+  const [form, setForm] = useState({ name:'', email:'', mobile:'', countryCode:'+91', skill:'', note:'' });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [page, setPage] = useState(0);
 
   const pageSize = 10;
   const [menuOpen, setMenuOpen] = useState(false);
+  const [heroSearch, setHeroSearch] = useState('');
+  const [heroExp, setHeroExp] = useState('');
+  const [heroLocation, setHeroLocation] = useState('');
   const [jobSkillFilter, setJobSkillFilter] = useState('All');
   const [jobTypeFilter, setJobTypeFilter] = useState('All');
   const { data: jobsData, isLoading: jobsLoading } = usePublicRequirements();
@@ -301,17 +304,22 @@ export default function HomePage() {
 
   const handleEnquiry = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.mobile || !form.skill) return;
+    if (!form.name || !form.email || !form.mobile || !form.skill) { toast.error('Please fill all required fields'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) { toast.error('Enter a valid email address'); return; }
+    if (form.mobile.length < 8) { toast.error('Enter a valid mobile number'); return; }
     setSubmitting(true);
-    try {
-      await publicApi.contact({
-        name: form.name,
-        email: `${form.mobile}@ws360.com`,
-        reason: 'it_support_enquiry',
-        message: `Skill: ${form.skill} | Hours: ${selH} | Note: ${form.note}`,
-      });
-    } catch {}
-    setSubmitted(true); setSubmitting(false);
+    // Fire-and-forget — don't await email, respond to user instantly
+    publicApi.contact({
+      name: form.name,
+      email: form.email,
+      countryCode: form.countryCode,
+      mobile: form.mobile,
+      reason: 'it_support_enquiry',
+      message: `Skill: ${form.skill} | Hours: ${selH} | Note: ${form.note}`,
+    }).catch(() => {}); // ignore email errors
+    // Show success immediately without waiting for email
+    setSubmitted(true);
+    setSubmitting(false);
   };
 
   const filteredSkills = IT_SKILLS.filter(s =>
@@ -361,7 +369,7 @@ export default function HomePage() {
       }}>
         <div style={{ maxWidth:1300, width:'100%', margin:'0 auto', display:'flex', alignItems:'center', gap:8 }}>
           {/* Logo */}
-          <button onClick={()=>navigate('/')} style={{ display:'flex', alignItems:'center', gap:10, background:'none', border:'none', cursor:'pointer', padding:0, marginRight:28, flexShrink:0 }}>
+          <button onClick={()=>{ if(window.location.pathname==='/'){window.scrollTo({top:0,behavior:'smooth'});}else{navigate('/');} }} style={{ display:'flex', alignItems:'center', gap:10, background:'none', border:'none', cursor:'pointer', padding:0, marginRight:28, flexShrink:0 }}>
             <WSLogo size={36}/>
             <div>
               <span style={{ fontWeight:800, fontSize:17, color:'#0f172a', letterSpacing:'-0.04em' }}>
@@ -372,11 +380,15 @@ export default function HomePage() {
 
           {/* Nav links */}
           <div className="hide-mobile" style={{ display:'flex', alignItems:'center', gap:2, flex:1 }}>
-            {[['IT Experts','#experts'],['Find Work','#jobs'],['How it works','#how'],['For Freelancers','#freelancer-cta'],['Contact','#contact']].map(([l,h])=>(
+            {[['IT Experts','#experts'],['Find Work','#jobs'],['How it works','#how']].map(([l,h])=>(
               <a key={l} href={h} style={{ padding:'7px 14px', borderRadius:8, fontSize:14, fontWeight:500, color:'#475569', transition:'all .15s' }}
                 onMouseEnter={e=>{(e.target as HTMLElement).style.color='#0f172a';(e.target as HTMLElement).style.background='#f8fafc';}}
                 onMouseLeave={e=>{(e.target as HTMLElement).style.color='#475569';(e.target as HTMLElement).style.background='transparent';}}>{l}</a>
             ))}
+            <a href="#contact" onClick={e=>{e.preventDefault();document.getElementById('contact')?.scrollIntoView({behavior:'smooth'});}}
+              style={{ padding:'7px 16px', borderRadius:9, background:'linear-gradient(135deg,#dc2626,#ef4444)', color:'#fff', fontSize:13, fontWeight:700, cursor:'pointer', textDecoration:'none', display:'inline-block', marginLeft:8, animation:'contactPulse 2s ease-in-out infinite' }}>
+              📞 Contact Us
+            </a>
           </div>
 
           <div style={{ display:'flex', gap:10, alignItems:'center' }}>
@@ -403,165 +415,220 @@ export default function HomePage() {
       </nav>
 
       {/* ══ HERO ══ */}
-      <section style={{ paddingTop:68, background:'linear-gradient(165deg,#0f172a 0%,#1e3a5f 55%,#0f172a 100%)', position:'relative', overflow:'hidden', minHeight:'100vh', display:'flex', flexDirection:'column' }}>
-        <div style={{ position:'absolute', inset:0, backgroundImage:'radial-gradient(rgba(59,130,246,0.07) 1px,transparent 1px)', backgroundSize:'28px 28px', pointerEvents:'none' }}/>
-        <div style={{ position:'absolute', top:-100, right:-100, width:500, height:500, borderRadius:'50%', background:'radial-gradient(circle,rgba(59,130,246,0.13) 0%,transparent 70%)', pointerEvents:'none' }}/>
-        <div style={{ position:'absolute', bottom:-80, left:-80, width:400, height:400, borderRadius:'50%', background:'radial-gradient(circle,rgba(124,58,237,0.1) 0%,transparent 70%)', pointerEvents:'none' }}/>
+      <section style={{ paddingTop:68, background:'linear-gradient(160deg,#0a0f1e 0%,#0f1f3d 40%,#1a2a4a 70%,#0a0f1e 100%)', position:'relative', overflow:'hidden', minHeight:'100vh', display:'flex', flexDirection:'column' }}>
+
+        {/* Animated background orbs */}
+        <div style={{ position:'absolute', top:'10%', left:'5%', width:500, height:500, borderRadius:'50%', background:'radial-gradient(circle,rgba(59,130,246,0.12) 0%,transparent 70%)', filter:'blur(40px)', animation:'orbFloat 8s ease-in-out infinite', pointerEvents:'none' }}/>
+        <div style={{ position:'absolute', top:'20%', right:'5%', width:400, height:400, borderRadius:'50%', background:'radial-gradient(circle,rgba(124,58,237,0.1) 0%,transparent 70%)', filter:'blur(40px)', animation:'orbFloat 10s ease-in-out infinite reverse', pointerEvents:'none' }}/>
+        <div style={{ position:'absolute', bottom:'10%', left:'30%', width:600, height:300, borderRadius:'50%', background:'radial-gradient(circle,rgba(16,185,129,0.06) 0%,transparent 70%)', filter:'blur(60px)', pointerEvents:'none' }}/>
+        <div style={{ position:'absolute', inset:0, backgroundImage:'radial-gradient(rgba(255,255,255,0.03) 1px,transparent 1px)', backgroundSize:'32px 32px', pointerEvents:'none' }}/>
 
         <style>{`
-          @keyframes scrollUp { 0%{transform:translateY(0)} 100%{transform:translateY(-50%)} }
-          @keyframes scrollDown { 0%{transform:translateY(-50%)} 100%{transform:translateY(0)} }
-          @keyframes heroPulse { 0%,100%{opacity:1} 50%{opacity:.5} }
-          @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
-          @keyframes glow { 0%,100%{box-shadow:0 0 20px rgba(59,130,246,0.3)} 50%{box-shadow:0 0 40px rgba(59,130,246,0.6)} }
-          .scroll-col-up   { animation: scrollUp   18s linear infinite; }
-          .scroll-col-down { animation: scrollDown 18s linear infinite; }
-          .hero-card { transition: all .2s; }
-          .hero-card:hover { transform: scale(1.02); }
+          @keyframes orbFloat{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-20px) scale(1.05)}}
+          @keyframes heroPulse{0%,100%{opacity:1}50%{opacity:.4}}
+          @keyframes scrollUp{0%{transform:translateY(0)}100%{transform:translateY(-50%)}}
+          @keyframes scrollDown{0%{transform:translateY(-50%)}100%{transform:translateY(0)}}
+          @keyframes wsGlow{0%,100%{box-shadow:0 0 20px rgba(59,130,246,0.4),0 0 40px rgba(59,130,246,0.1)}50%{box-shadow:0 0 40px rgba(59,130,246,0.7),0 0 80px rgba(59,130,246,0.2)}}
+          @keyframes fadeSlideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
+          @keyframes ticker{to{transform:translateX(-50%)}}
+          @keyframes shimmer{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+          @keyframes contactPulse{0%,100%{opacity:1;box-shadow:0 2px 10px rgba(220,38,38,0.35)}50%{opacity:.82;box-shadow:0 4px 24px rgba(220,38,38,0.65)}}
+          .hero-card{transition:transform .2s,box-shadow .2s}
+          .hero-card:hover{transform:translateY(-2px)!important}
+          .scroll-col-up{animation:scrollUp 20s linear infinite}
+          .scroll-col-down{animation:scrollDown 20s linear infinite}
+          .tag-btn:hover{background:rgba(255,255,255,0.18)!important;border-color:rgba(255,255,255,0.4)!important}
+          .srch-inp:focus{outline:none}
         `}</style>
 
-        <div style={{ maxWidth:1300, margin:'0 auto', padding:'60px 40px 0', position:'relative', zIndex:1, flex:1, display:'flex', flexDirection:'column' }}>
+        <div style={{ maxWidth:1200, margin:'0 auto', padding:'44px 40px 0', position:'relative', zIndex:1, flex:1, display:'flex', flexDirection:'column', gap:0 }}>
 
-          {/* Badge */}
-          <div style={{ display:'flex', justifyContent:'center', marginBottom:20 }}>
-            <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'7px 18px', borderRadius:100, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)' }}>
-              <span style={{ width:7, height:7, borderRadius:'50%', background:'#22c55e', animation:'heroPulse 2s ease infinite', display:'inline-block' }}/>
-              <span style={{ fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.7)' }}>1,240+ MNC engineers · Available now · Admin-coordinated</span>
+          {/* ── FREELANCER SEARCH — TOP ── */}
+          <div style={{ animation:'fadeSlideUp .6s ease both', marginBottom:40 }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:14 }}>
+              <div style={{ height:1, flex:1, maxWidth:80, background:'rgba(255,255,255,0.1)' }}/>
+              <span style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.5)', letterSpacing:'0.1em', textTransform:'uppercase' }}>👨‍💻 IT Professionals — Find Freelance Work</span>
+              <div style={{ height:1, flex:1, maxWidth:80, background:'rgba(255,255,255,0.1)' }}/>
+            </div>
+            {/* Search pill */}
+            <div style={{ maxWidth:820, margin:'0 auto', background:'rgba(255,255,255,0.97)', borderRadius:100, display:'flex', alignItems:'center', padding:'7px 7px 7px 22px', boxShadow:'0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1)', gap:0 }}>
+              <Search size={17} color="#94a3b8" style={{ flexShrink:0 }}/>
+              <input className="srch-inp" value={heroSearch} onChange={e=>setHeroSearch(e.target.value)}
+                onKeyDown={e=>e.key==='Enter'&&document.getElementById('jobs')?.scrollIntoView({behavior:'smooth'})}
+                placeholder="Enter skills / designation / technology…"
+                style={{ flex:1, border:'none', outline:'none', fontSize:15, color:'#0f172a', background:'transparent', fontFamily:'inherit', padding:'8px 14px' }}/>
+              <div style={{ width:1, height:30, background:'#e2e8f0', margin:'0 4px', flexShrink:0 }}/>
+              <select value={heroExp} onChange={e=>setHeroExp(e.target.value)}
+                style={{ border:'none', outline:'none', fontSize:13, color:heroExp?'#0f172a':'#9ca3af', background:'transparent', fontFamily:'inherit', cursor:'pointer', padding:'8px 8px 8px 12px', minWidth:150 }}>
+                <option value="">Select experience</option>
+                {['0–1 yr (Fresher)','1–3 yrs','3–5 yrs','5–8 yrs','8–12 yrs','12+ yrs'].map(e=><option key={e}>{e}</option>)}
+              </select>
+              <div style={{ width:1, height:30, background:'#e2e8f0', margin:'0 4px', flexShrink:0 }}/>
+              <select value={jobTypeFilter} onChange={e=>setJobTypeFilter(e.target.value)}
+                style={{ border:'none', outline:'none', fontSize:13, color:jobTypeFilter&&jobTypeFilter!=='All'?'#0f172a':'#9ca3af', background:'transparent', fontFamily:'inherit', cursor:'pointer', padding:'8px 8px 8px 12px', minWidth:120 }}>
+                <option value="All">All types</option>
+                <option value="Hourly">⚡ Hourly</option>
+                <option value="Day">☀️ Day</option>
+                <option value="Monthly">📅 Monthly</option>
+              </select>
+              <button onClick={()=>document.getElementById('jobs')?.scrollIntoView({behavior:'smooth'})}
+                style={{ flexShrink:0, padding:'12px 28px', borderRadius:100, background:'linear-gradient(135deg,#2563eb,#3b82f6)', color:'#fff', border:'none', fontSize:14, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 16px rgba(37,99,235,0.5)', whiteSpace:'nowrap', marginLeft:4 }}>
+                Find Work
+              </button>
+            </div>
+            {/* Popular tags */}
+            <div style={{ display:'flex', gap:7, marginTop:13, flexWrap:'wrap', justifyContent:'center', alignItems:'center' }}>
+              <span style={{ fontSize:11, color:'rgba(255,255,255,0.3)', fontWeight:600, marginRight:2 }}>Trending:</span>
+              {['React.js','Node.js','AWS','DevOps','Python','Flutter','Java','.NET','Data Science','Kubernetes'].map(tag=>(
+                <button key={tag} className="tag-btn" onClick={()=>{setHeroSearch(tag);document.getElementById('jobs')?.scrollIntoView({behavior:'smooth'});}}
+                  style={{ padding:'4px 13px', borderRadius:100, background:heroSearch===tag?'rgba(59,130,246,0.35)':'rgba(255,255,255,0.07)', border:`1px solid ${heroSearch===tag?'rgba(59,130,246,0.7)':'rgba(255,255,255,0.12)'}`, color:heroSearch===tag?'#93c5fd':'rgba(255,255,255,0.6)', fontSize:11, fontWeight:600, cursor:'pointer', transition:'all .18s' }}>
+                  {tag}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Headline */}
-          <h1 style={{ textAlign:'center', fontSize:'clamp(2.2rem,4.2vw,3.8rem)', fontWeight:900, color:'#fff', letterSpacing:'-0.05em', lineHeight:1.07, margin:'0 auto 14px', maxWidth:780 }}>
-            Hire IT Experts &amp;{' '}
-            <span style={{ background:'linear-gradient(90deg,#60a5fa,#a78bfa)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>
-              Find Freelance Work
-            </span>
-          </h1>
-          <p style={{ textAlign:'center', fontSize:17, color:'rgba(255,255,255,0.5)', lineHeight:1.75, maxWidth:540, margin:'0 auto 36px' }}>
-            One platform — businesses hire MNC experts by the hour, IT professionals earn on their free time. Identity safe. Admin coordinated.
-          </p>
+          {/* ── DIVIDER ── */}
+          <div style={{ display:'flex', alignItems:'center', gap:16, marginBottom:36, animation:'fadeSlideUp .7s .1s ease both' }}>
+            <div style={{ flex:1, height:1, background:'rgba(255,255,255,0.06)' }}/>
+            <span style={{ fontSize:11, color:'rgba(255,255,255,0.2)', fontWeight:600, letterSpacing:'0.08em' }}>OR BROWSE & HIRE EXPERTS</span>
+            <div style={{ flex:1, height:1, background:'rgba(255,255,255,0.06)' }}/>
+          </div>
 
-          {/* Two CTAs */}
-          <div style={{ display:'flex', justifyContent:'center', gap:14, marginBottom:48, flexWrap:'wrap' }}>
+          {/* ── BADGE ── */}
+          <div style={{ display:'flex', justifyContent:'center', marginBottom:16, animation:'fadeSlideUp .7s .15s ease both' }}>
+            <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'6px 18px', borderRadius:100, background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.1)', backdropFilter:'blur(8px)' }}>
+              <span style={{ width:7, height:7, borderRadius:'50%', background:'#22c55e', animation:'heroPulse 2s ease infinite', display:'inline-block' }}/>
+              <span style={{ fontSize:13, fontWeight:600, color:'rgba(255,255,255,0.65)' }}>1,240+ MNC engineers · Available now · Admin-verified</span>
+            </div>
+          </div>
+
+          {/* ── HEADLINE ── */}
+          <div style={{ textAlign:'center', marginBottom:14, animation:'fadeSlideUp .7s .2s ease both' }}>
+            <h3 style={{ fontSize:'clamp(2.6rem,5vw,4.2rem)', fontWeight:900, color:'#fff', letterSpacing:'-0.05em', lineHeight:1.04, margin:'0 auto', maxWidth:860 }}>
+              Hire IT Experts &amp;{' '}
+              <span style={{ background:'linear-gradient(90deg,#60a5fa 0%,#a78bfa 50%,#60a5fa 100%)', backgroundSize:'200%', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', animation:'shimmer 4s linear infinite' }}>
+                Find Freelance Work
+              </span>
+            </h3>
+          </div>
+         
+
+          {/* ── 3 CTAs ── */}
+          <div style={{ display:'flex', justifyContent:'center', gap:12, marginBottom:44, flexWrap:'wrap', animation:'fadeSlideUp .7s .3s ease both' }}>
             <button onClick={()=>document.getElementById('experts')?.scrollIntoView({behavior:'smooth'})}
-              style={{ display:'flex', alignItems:'center', gap:8, padding:'13px 28px', borderRadius:13, background:'linear-gradient(135deg,#2563eb,#3b82f6)', color:'#fff', border:'none', fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 20px rgba(59,130,246,0.4)' }}>
+              style={{ display:'flex', alignItems:'center', gap:8, padding:'13px 28px', borderRadius:14, background:'linear-gradient(135deg,#2563eb,#3b82f6)', color:'#fff', border:'none', fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 6px 24px rgba(37,99,235,0.45)' }}>
               🏢 Hire an Expert
             </button>
+            <button onClick={()=>navigate('/post-requirement')}
+              style={{ display:'flex', alignItems:'center', gap:8, padding:'13px 28px', borderRadius:14, background:'linear-gradient(135deg,#059669,#10b981)', color:'#fff', border:'none', fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 6px 24px rgba(5,150,105,0.4)' }}>
+              📋 Post Requirement
+            </button>
             <button onClick={()=>document.getElementById('jobs')?.scrollIntoView({behavior:'smooth'})}
-              style={{ display:'flex', alignItems:'center', gap:8, padding:'13px 28px', borderRadius:13, background:'rgba(255,255,255,0.08)', color:'#fff', border:'1.5px solid rgba(255,255,255,0.15)', fontSize:15, fontWeight:700, cursor:'pointer', transition:'all .2s' }}
-              onMouseEnter={e=>{e.currentTarget.style.background='rgba(124,58,237,0.25)';e.currentTarget.style.borderColor='rgba(124,58,237,0.5)';}}
-              onMouseLeave={e=>{e.currentTarget.style.background='rgba(255,255,255,0.08)';e.currentTarget.style.borderColor='rgba(255,255,255,0.15)';}}>
+              style={{ display:'flex', alignItems:'center', gap:8, padding:'13px 28px', borderRadius:14, background:'rgba(255,255,255,0.07)', color:'rgba(255,255,255,0.85)', border:'1.5px solid rgba(255,255,255,0.15)', fontSize:15, fontWeight:700, cursor:'pointer', backdropFilter:'blur(8px)' }}>
               👨‍💻 Find IT Work
             </button>
           </div>
 
-          {/* ── ANIMATED DUAL SCROLL ── */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 60px 1fr', gap:0, alignItems:'center', flex:1, minHeight:0, maxHeight:320, overflow:'hidden', position:'relative' }}>
+          {/* ── DUAL SCROLL ── */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 56px 1fr', gap:0, maxHeight:240, overflow:'hidden', position:'relative', animation:'fadeSlideUp .7s .35s ease both' }}>
+            <div style={{ position:'absolute', top:0, left:0, right:0, height:48, background:'linear-gradient(to bottom,#0a0f1e,transparent)', zIndex:10, pointerEvents:'none' }}/>
+            <div style={{ position:'absolute', bottom:0, left:0, right:0, height:48, background:'linear-gradient(to top,#0a0f1e,transparent)', zIndex:10, pointerEvents:'none' }}/>
 
-            {/* Fade top */}
-            <div style={{ position:'absolute', top:0, left:0, right:0, height:60, background:'linear-gradient(to bottom,#0f172a,transparent)', zIndex:10, pointerEvents:'none' }}/>
-            {/* Fade bottom */}
-            <div style={{ position:'absolute', bottom:0, left:0, right:0, height:60, background:'linear-gradient(to top,#0f172a,transparent)', zIndex:10, pointerEvents:'none' }}/>
-
-            {/* LEFT — Client requirements (scroll up) */}
-            <div style={{ overflow:'hidden', height:320 }}>
+            {/* Left — requirements scroll up */}
+            <div style={{ overflow:'hidden', height:240 }}>
               <div className="scroll-col-up">
                 {[...Array(2)].flatMap(()=>[
-                  {icon:'🔥',tag:'Urgent',type:'Hourly',col:'#ef4444',tc:'#fef2f2',title:'Production Bug Fix — React Dashboard',company:'FinTech Corp',skills:['React','TypeScript','Redux'],rate:'₹800/hr',time:'Now'},
-                  {icon:'☁️',tag:'Day',type:'Day',col:'#7c3aed',tc:'#f5f3ff',title:'AWS Infrastructure Setup',company:'StartupXYZ',skills:['AWS','Terraform','Docker'],rate:'₹5,000/day',time:'2h ago'},
-                  {icon:'⚙️',tag:'Monthly',type:'Monthly',col:'#059669',tc:'#ecfdf5',title:'Backend Dev — Node.js APIs',company:'E-commerce Co.',skills:['Node.js','PostgreSQL','Redis'],rate:'₹2,500/hr',time:'5h ago'},
-                  {icon:'📱',tag:'Hourly',type:'Hourly',col:'#2563eb',tc:'#eff6ff',title:'Flutter App — UI Screens',company:'MobileFirst',skills:['Flutter','Dart','Firebase'],rate:'₹600/hr',time:'8h ago'},
-                  {icon:'🤖',tag:'Day',type:'Day',col:'#d97706',tc:'#fffbeb',title:'ML Pipeline — NLP Classification',company:'DataSoft',skills:['Python','TensorFlow','NLP'],rate:'₹4,500/day',time:'1d ago'},
+                  {icon:'🔥',col:'#ef4444',bg:'rgba(239,68,68,0.15)',title:'Production Bug Fix — React',company:'FinTech Corp',skills:['React','TypeScript'],rate:'₹800/hr',tag:'Urgent'},
+                  {icon:'☁️',col:'#7c3aed',bg:'rgba(124,58,237,0.15)',title:'AWS Infrastructure Setup',company:'StartupXYZ',skills:['AWS','Terraform'],rate:'₹5K/day',tag:'Day'},
+                  {icon:'⚙️',col:'#059669',bg:'rgba(5,150,105,0.15)',title:'Backend Dev — Node.js APIs',company:'E-commerce Co.',skills:['Node.js','PostgreSQL'],rate:'₹2.5K/hr',tag:'Monthly'},
+                  {icon:'📱',col:'#2563eb',bg:'rgba(37,99,235,0.15)',title:'Flutter App — UI Screens',company:'MobileFirst',skills:['Flutter','Firebase'],rate:'₹600/hr',tag:'Hourly'},
+                  {icon:'🤖',col:'#d97706',bg:'rgba(217,119,6,0.15)',title:'ML Pipeline — NLP',company:'DataSoft',skills:['Python','TensorFlow'],rate:'₹4.5K/day',tag:'Day'},
                 ]).map((j,i)=>(
-                  <div key={i} className="hero-card" style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:16, padding:'14px 16px', marginBottom:10, cursor:'pointer' }}
+                  <div key={i} className="hero-card" style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:'11px 13px', marginBottom:7, cursor:'pointer' }}
                     onClick={()=>document.getElementById('jobs')?.scrollIntoView({behavior:'smooth'})}>
-                    <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
-                      <div style={{ width:34, height:34, borderRadius:10, background:j.tc, display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0 }}>{j.icon}</div>
+                    <div style={{ display:'flex', alignItems:'center', gap:9, marginBottom:6 }}>
+                      <div style={{ width:28, height:28, borderRadius:8, background:j.bg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, flexShrink:0 }}>{j.icon}</div>
                       <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:12, fontWeight:800, color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{j.title}</div>
-                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)' }}>{j.company} · {j.time}</div>
+                        <div style={{ fontSize:11, fontWeight:800, color:'#f1f5f9', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{j.title}</div>
+                        <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)' }}>{j.company}</div>
                       </div>
-                      <span style={{ fontSize:9, fontWeight:800, padding:'2px 7px', borderRadius:5, background:j.tc, color:j.col, flexShrink:0 }}>{j.type}</span>
+                      <span style={{ fontSize:8, fontWeight:800, padding:'2px 6px', borderRadius:4, background:j.bg, color:j.col, flexShrink:0 }}>{j.tag}</span>
                     </div>
-                    <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginBottom:6 }}>
-                      {j.skills.map(s=><span key={s} style={{ fontSize:9, padding:'2px 6px', borderRadius:4, background:'rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.5)' }}>{s}</span>)}
+                    <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                      {j.skills.map(s=><span key={s} style={{ fontSize:9, padding:'2px 7px', borderRadius:4, background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.4)' }}>{s}</span>)}
+                      <span style={{ fontSize:10, fontWeight:700, color:'#34d399', marginLeft:'auto' }}>{j.rate}</span>
                     </div>
-                    <div style={{ fontSize:11, fontWeight:700, color:'#34d399' }}>{j.rate}</div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* CENTER connector */}
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:6, position:'relative', zIndex:5 }}>
-              <div style={{ width:2, flex:1, background:'linear-gradient(to bottom,transparent,rgba(59,130,246,0.5),transparent)' }}/>
-              <div style={{ width:44, height:44, borderRadius:'50%', background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:900, fontSize:12, color:'#fff', flexShrink:0, animation:'glow 3s ease infinite', border:'2px solid rgba(59,130,246,0.4)' }}>WS</div>
-              <div style={{ width:2, flex:1, background:'linear-gradient(to bottom,transparent,rgba(124,58,237,0.5),transparent)' }}/>
+            {/* Center WS */}
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', position:'relative', zIndex:5 }}>
+              <div style={{ width:2, flex:1, background:'linear-gradient(to bottom,transparent,rgba(59,130,246,0.4),transparent)' }}/>
+              <div style={{ width:38, height:38, borderRadius:'50%', background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:900, fontSize:10, color:'#fff', flexShrink:0, animation:'wsGlow 3s ease infinite', border:'1.5px solid rgba(59,130,246,0.5)', letterSpacing:'0.02em' }}>WS</div>
+              <div style={{ width:2, flex:1, background:'linear-gradient(to bottom,transparent,rgba(124,58,237,0.4),transparent)' }}/>
             </div>
 
-            {/* RIGHT — Freelancer profiles (scroll down) */}
-            <div style={{ overflow:'hidden', height:320 }}>
+            {/* Right — experts scroll down */}
+            <div style={{ overflow:'hidden', height:240 }}>
               <div className="scroll-col-down">
                 {[...Array(2)].flatMap(()=>[
-                  {name:'Rahul S.',role:'Senior React Dev',company:'ex-Infosys',skills:['React','TypeScript','Node.js'],rating:4.9,jobs:29,avail:true,col:'linear-gradient(135deg,#1e3a5f,#3b82f6)'},
-                  {name:'Deepa N.',role:'QA Lead',company:'ex-TCS',skills:['Selenium','Playwright','JIRA'],rating:4.7,jobs:18,avail:true,col:'linear-gradient(135deg,#7c3aed,#a855f7)'},
-                  {name:'Arjun M.',role:'DevOps Lead',company:'ex-Wipro',skills:['AWS','Kubernetes','Terraform'],rating:4.8,jobs:12,avail:true,col:'linear-gradient(135deg,#059669,#10b981)'},
-                  {name:'Sneha R.',role:'.NET Developer',company:'ex-HCL',skills:['C#','Azure','Microservices'],rating:4.6,jobs:11,avail:false,col:'linear-gradient(135deg,#0891b2,#06b6d4)'},
-                  {name:'Vikram S.',role:'Java Architect',company:'ex-Cognizant',skills:['Spring Boot','Kafka','Redis'],rating:4.5,jobs:7,avail:true,col:'linear-gradient(135deg,#d97706,#f59e0b)'},
+                  {name:'Rahul S.',role:'Senior React Dev',co:'ex-Infosys',skills:['React','TS'],rating:4.9,avail:true,col:'#3b82f6'},
+                  {name:'Deepa N.',role:'QA Lead',co:'ex-TCS',skills:['Selenium','Playwright'],rating:4.7,avail:true,col:'#7c3aed'},
+                  {name:'Arjun M.',role:'DevOps Lead',co:'ex-Wipro',skills:['AWS','K8s'],rating:4.8,avail:true,col:'#059669'},
+                  {name:'Sneha R.',role:'.NET Developer',co:'ex-HCL',skills:['C#','Azure'],rating:4.6,avail:false,col:'#0891b2'},
+                  {name:'Vikram S.',role:'Java Architect',co:'ex-Cognizant',skills:['Spring','Kafka'],rating:4.5,avail:true,col:'#d97706'},
                 ]).map((f,i)=>(
-                  <div key={i} className="hero-card" style={{ background:'rgba(255,255,255,0.05)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:16, padding:'14px 16px', marginBottom:10, cursor:'pointer' }}
+                  <div key={i} className="hero-card" style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:12, padding:'11px 13px', marginBottom:7, cursor:'pointer' }}
                     onClick={()=>document.getElementById('experts')?.scrollIntoView({behavior:'smooth'})}>
-                    <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:8 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:9, marginBottom:5 }}>
                       <div style={{ position:'relative', flexShrink:0 }}>
-                        <div style={{ width:36, height:36, borderRadius:11, background:f.col, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:900, fontSize:15, color:'#fff' }}>{f.name[0]}</div>
-                        {f.avail&&<div style={{ position:'absolute', bottom:-1, right:-1, width:9, height:9, borderRadius:'50%', background:'#22c55e', border:'1.5px solid #0f172a' }}/>}
+                        <div style={{ width:28, height:28, borderRadius:9, background:`linear-gradient(135deg,${f.col}88,${f.col})`, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:900, fontSize:12, color:'#fff' }}>{f.name[0]}</div>
+                        {f.avail&&<div style={{ position:'absolute', bottom:-1, right:-1, width:8, height:8, borderRadius:'50%', background:'#22c55e', border:'1.5px solid #0a0f1e' }}/>}
                       </div>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontSize:12, fontWeight:800, color:'#fff' }}>{f.name}</div>
-                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)' }}>{f.role} · {f.company}</div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:11, fontWeight:800, color:'#f1f5f9' }}>{f.name}</div>
+                        <div style={{ fontSize:9, color:'rgba(255,255,255,0.35)' }}>{f.role} · {f.co}</div>
                       </div>
-                      <div style={{ fontSize:11, color:'#fbbf24', fontWeight:700, flexShrink:0 }}>★ {f.rating}</div>
+                      <div style={{ fontSize:10, color:'#fbbf24', fontWeight:700 }}>★ {f.rating}</div>
                     </div>
-                    <div style={{ display:'flex', gap:4, flexWrap:'wrap', marginBottom:6 }}>
-                      {f.skills.map(s=><span key={s} style={{ fontSize:9, padding:'2px 6px', borderRadius:4, background:'rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.5)' }}>{s}</span>)}
+                    <div style={{ display:'flex', gap:4 }}>
+                      {f.skills.map(s=><span key={s} style={{ fontSize:9, padding:'2px 7px', borderRadius:4, background:'rgba(255,255,255,0.06)', color:'rgba(255,255,255,0.4)' }}>{s}</span>)}
                     </div>
-                    <div style={{ fontSize:10, color:'rgba(255,255,255,0.35)' }}>{f.jobs} projects completed</div>
                   </div>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Labels below columns */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 60px 1fr', marginBottom:0, paddingTop:12, position:'relative', zIndex:5 }}>
-            <div style={{ textAlign:'center' }}>
-              <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.35)', letterSpacing:'0.06em', textTransform:'uppercase' }}>🏢 Client Requirements</div>
-            </div>
+          {/* Column labels */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 56px 1fr', paddingTop:8, marginBottom:0 }}>
+            <div style={{ textAlign:'center', fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.25)', letterSpacing:'0.06em', textTransform:'uppercase' }}>🏢 Client Requirements</div>
             <div/>
-            <div style={{ textAlign:'center' }}>
-              <div style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.35)', letterSpacing:'0.06em', textTransform:'uppercase' }}>👨‍💻 Available Experts</div>
-            </div>
+            <div style={{ textAlign:'center', fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.25)', letterSpacing:'0.06em', textTransform:'uppercase' }}>👨‍💻 Available Experts</div>
           </div>
         </div>
 
         {/* Stats bar */}
-        <div style={{ background:'rgba(0,0,0,0.3)', borderTop:'1px solid rgba(255,255,255,0.06)', padding:'14px 40px', marginTop:16 }}>
-          <div style={{ maxWidth:1300, margin:'0 auto', display:'flex', flexWrap:'wrap', justifyContent:'center', gap:0 }}>
+        <div style={{ background:'rgba(0,0,0,0.4)', borderTop:'1px solid rgba(255,255,255,0.05)', padding:'12px 40px', marginTop:20 }}>
+          <div style={{ maxWidth:1200, margin:'0 auto', display:'flex', flexWrap:'wrap', justifyContent:'center' }}>
             {STATS.map((s,i)=>(
-              <div key={s.l} style={{ flex:'1 1 160px', textAlign:'center', padding:'10px 20px', borderRight:i<STATS.length-1?'1px solid rgba(255,255,255,0.07)':'none' }}>
-                <div style={{ fontWeight:900, fontSize:22, color:'#fff', letterSpacing:'-0.03em', lineHeight:1 }}>{s.n}</div>
-                <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:4 }}>{s.l}</div>
+              <div key={s.l} style={{ flex:'1 1 150px', textAlign:'center', padding:'8px 20px', borderRight:i<STATS.length-1?'1px solid rgba(255,255,255,0.06)':'none' }}>
+                <div style={{ fontWeight:900, fontSize:20, color:'#fff', letterSpacing:'-0.03em' }}>{s.n}</div>
+                <div style={{ fontSize:11, color:'rgba(255,255,255,0.3)', marginTop:2 }}>{s.l}</div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Companies ticker */}
-        <div style={{ background:'rgba(0,0,0,0.25)', borderTop:'1px solid rgba(255,255,255,0.05)', padding:'9px 0', overflow:'hidden' }}>
+        {/* Ticker */}
+        <div style={{ background:'rgba(0,0,0,0.3)', borderTop:'1px solid rgba(255,255,255,0.04)', padding:'8px 0', overflow:'hidden' }}>
           <div style={{ display:'flex', width:'max-content', animation:'ticker 28s linear infinite' }}>
             {[...COMPANIES,...COMPANIES].map((co,i)=>(
-              <span key={i} style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.2)', whiteSpace:'nowrap', padding:'0 22px', letterSpacing:'0.08em', textTransform:'uppercase' }}>
-                {co}<span style={{ marginLeft:22, color:'rgba(255,255,255,0.07)' }}>·</span>
+              <span key={i} style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.18)', whiteSpace:'nowrap', padding:'0 22px', letterSpacing:'0.08em', textTransform:'uppercase' }}>
+                {co}<span style={{ marginLeft:22, color:'rgba(255,255,255,0.06)' }}>·</span>
               </span>
             ))}
           </div>
@@ -684,8 +751,8 @@ export default function HomePage() {
         <div style={{ maxWidth:1300, margin:'0 auto', position:'relative', zIndex:1 }}>
           <div style={{ textAlign:'center', marginBottom:52 }}>
             <p style={{ margin:'0 0 8px', fontSize:12, fontWeight:700, color:'#60a5fa', letterSpacing:'0.08em', textTransform:'uppercase' }}>Four steps</p>
-            <h2 style={{ margin:'0 0 10px', fontSize:34, fontWeight:900, color:'#fff', letterSpacing:'-0.04em' }}>From requirement to live expert in 4 hours</h2>
-            <p style={{ margin:0, fontSize:15, color:'rgba(255,255,255,0.45)' }}>Admin-coordinated. MNC-verified. No middlemen.</p>
+            <h2 style={{ margin:'0 0 10px', fontSize:34, fontWeight:900, color:'#fff', letterSpacing:'-0.04em' }}>From requirement to live expert soon</h2>
+            <p style={{ margin:0, fontSize:15, color:'rgba(255,255,255,0.45)' }}>Admin-verified. MNC-verified. No middlemen.</p>
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:20 }} className="grid-4">
             {STEPS.map((s,i)=>(
@@ -709,53 +776,17 @@ export default function HomePage() {
       </section>
 
 
-      {/* ══ FREELANCER CTA ══ */}
-      <section style={{ padding:'80px 40px', background:'#fff' }}>
-        <div style={{ maxWidth:1300, margin:'0 auto', display:'grid', gridTemplateColumns:'1fr 1fr', gap:72, alignItems:'center' }} className="hero-grid">
-          <div>
-            <p style={{ margin:'0 0 8px', fontSize:12, fontWeight:700, color:'#3b82f6', letterSpacing:'0.08em', textTransform:'uppercase' }}>For MNC professionals</p>
-            <h2 style={{ margin:'0 0 14px', fontSize:34, fontWeight:900, color:'#0f172a', letterSpacing:'-0.04em' }}>Earn on Your<br/>Free Hours</h2>
-            <p style={{ fontSize:15, color:'#475569', lineHeight:1.78, marginBottom:24 }}>
-              Employed at an MNC? Use evenings and weekends to earn extra income — completely anonymous. Your employer is <strong>never</strong> notified.
-            </p>
-            <div style={{ display:'flex', flexDirection:'column', gap:11, marginBottom:28 }}>
-              {['Work during evenings, weekends, or public holidays','Get paid within 3 business days — GST invoice provided','Choose only projects that match your skills and schedule','Full identity protection — clients only see your alias profile','IT-only platform — every client is a genuine tech business'].map(item=>(
-                <div key={item} style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
-                  <CheckCircle size={16} color="#3b82f6" style={{ flexShrink:0, marginTop:2 }}/>
-                  <span style={{ fontSize:14, color:'#374151' }}>{item}</span>
-                </div>
-              ))}
-            </div>
-            <button onClick={()=>navigate('/register?role=freelancer')}
-              style={{ display:'inline-flex', alignItems:'center', gap:9, padding:'14px 28px', borderRadius:14, background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:'#fff', border:'none', fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 6px 24px rgba(59,130,246,0.35)' }}>
-              <UserPlus size={16}/> Register as IT Expert →
-            </button>
-          </div>
-          {/* Role rate cards */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-            {[{e:'💻',r:'Full-Stack Dev',rate:'₹500–₹2,000/hr'},{e:'☁️',r:'Cloud / AWS',rate:'₹600–₹2,500/hr'},{e:'🐍',r:'Python / ML',rate:'₹500–₹2,000/hr'},{e:'📱',r:'Mobile Dev',rate:'₹500–₹1,800/hr'},{e:'🔧',r:'DevOps / K8s',rate:'₹700–₹2,500/hr'},{e:'🛡️',r:'QA / Security',rate:'₹400–₹1,500/hr'}].map(r=>(
-              <div key={r.r} style={{ background:'#f8fafc', border:'1.5px solid #e2e8f0', borderRadius:16, padding:'18px', transition:'all .2s' }}
-                onMouseEnter={e=>{e.currentTarget.style.borderColor='#bfdbfe';e.currentTarget.style.background='#eff6ff';e.currentTarget.style.transform='translateY(-3px)';e.currentTarget.style.boxShadow='0 8px 20px rgba(59,130,246,0.1)';}}
-                onMouseLeave={e=>{e.currentTarget.style.borderColor='#e2e8f0';e.currentTarget.style.background='#f8fafc';e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}>
-                <div style={{ fontSize:26, marginBottom:7 }}>{r.e}</div>
-                <div style={{ fontWeight:700, fontSize:13, color:'#0f172a', marginBottom:4 }}>{r.r}</div>
-                <div style={{ fontSize:12, color:'#3b82f6', fontWeight:700 }}>{r.rate}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* ══ JOB BOARD ══ */}
       <section id="jobs" style={{ padding:'72px 40px', background:'#fff' }}>
         <div style={{ maxWidth:1300, margin:'0 auto' }}>
-          <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', marginBottom:32, flexWrap:'wrap', gap:14 }}>
+          <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', marginBottom:24, flexWrap:'wrap', gap:12 }}>
             <div>
-              <p style={{ margin:'0 0 6px', fontSize:12, fontWeight:700, color:'#3b82f6', letterSpacing:'0.08em', textTransform:'uppercase' }}>Freelancer opportunities</p>
-              <h2 style={{ margin:'0 0 6px', fontSize:28, fontWeight:900, color:'#0f172a', letterSpacing:'-0.04em' }}>Find IT Work</h2>
-              <p style={{ margin:0, fontSize:14, color:'#64748b' }}>Client requirements posted by verified businesses — freelancers only can apply</p>
+              <p style={{ margin:'0 0 4px', fontSize:12, fontWeight:700, color:'#3b82f6', letterSpacing:'0.08em', textTransform:'uppercase' }}>Open Requirements</p>
+              <h2 style={{ margin:'0 0 4px', fontSize:26, fontWeight:900, color:'#0f172a', letterSpacing:'-0.04em' }}>Freelance IT Work</h2>
+              <p style={{ margin:0, fontSize:13, color:'#64748b' }}>Admin-approved client requirements · freelancers only can apply</p>
             </div>
-            <button onClick={()=>navigate('/register?role=freelancer')} style={{ padding:'10px 22px', borderRadius:12, background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', display:'flex', alignItems:'center', gap:7 }}>
+            <button onClick={()=>navigate('/register?role=freelancer')} style={{ padding:'9px 20px', borderRadius:11, background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer' }}>
               Register to Apply →
             </button>
           </div>
@@ -803,7 +834,7 @@ export default function HomePage() {
                     <button onClick={()=>{
                       if(!isAuthenticated){ navigate('/login?returnTo=/'); return; }
                       if(userRole!=='freelancer'){ toast.error('Only freelancers can apply',{icon:'🚫'}); return; }
-                      toast.success('Application submitted! Admin will contact you within 4 hours.',{icon:'✅'});
+                      toast.success('Application submitted! Admin will contact you promptly.',{icon:'✅'});
                     }}
                       style={{ width:'100%', padding:'10px', borderRadius:11, background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:'#fff', border:'none', fontSize:12, fontWeight:700, cursor:'pointer' }}>
                       {isAuthenticated&&userRole==='freelancer'?'Apply Now →':'Login as Freelancer to Apply'}
@@ -855,14 +886,14 @@ export default function HomePage() {
           <div style={{ textAlign:'center', marginBottom:40 }}>
             <p style={{ margin:'0 0 8px', fontSize:12, fontWeight:700, color:'#3b82f6', letterSpacing:'0.08em', textTransform:'uppercase' }}>Get started in 2 minutes</p>
             <h2 style={{ margin:'0 0 8px', fontSize:34, fontWeight:900, color:'#0f172a', letterSpacing:'-0.04em' }}>Post Your IT Requirement</h2>
-            <p style={{ margin:0, fontSize:15, color:'#64748b' }}>We reply within 4 hours with a matched, verified engineer</p>
+            <p style={{ margin:0, fontSize:15, color:'#64748b' }}>We match you with a verified MNC engineer</p>
           </div>
 
           {submitted ? (
             <div style={{ background:'linear-gradient(135deg,#eff6ff,#f0fdf4)', border:'2px solid #bfdbfe', borderRadius:24, padding:'52px', textAlign:'center' }}>
               <div style={{ width:72, height:72, borderRadius:'50%', background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 18px', fontSize:32, boxShadow:'0 6px 20px rgba(59,130,246,0.35)' }}>✓</div>
               <h3 style={{ fontWeight:900, fontSize:22, color:'#0f172a', margin:'0 0 10px' }}>Requirement received!</h3>
-              <p style={{ fontSize:15, color:'#475569', lineHeight:1.7, margin:0 }}>Our admin team will match you with a verified engineer and contact you within 4 hours on WhatsApp or mobile.</p>
+              <p style={{ fontSize:15, color:'#475569', lineHeight:1.7, margin:0 }}>Our admin team will match you with a verified engineer and contact you promptly on WhatsApp or mobile.</p>
             </div>
           ) : (
             <form onSubmit={handleEnquiry} style={{ background:'#f8fafc', borderRadius:24, padding:'36px', border:'1px solid #f1f5f9', display:'flex', flexDirection:'column', gap:16, boxShadow:'0 4px 24px rgba(0,0,0,0.04)' }}>
@@ -872,9 +903,24 @@ export default function HomePage() {
                   <input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Full name" required style={inp} onFocus={onF} onBlur={onB}/>
                 </div>
                 <div>
-                  <label style={{ fontSize:12, fontWeight:700, color:'#374151', display:'block', marginBottom:7, textTransform:'uppercase', letterSpacing:'0.04em' }}>Mobile / WhatsApp *</label>
-                  <input value={form.mobile} onChange={e=>setForm({...form,mobile:e.target.value})} placeholder="+91-XXXXXXXXXX" required style={inp} onFocus={onF} onBlur={onB}/>
+                  <label style={{ fontSize:12, fontWeight:700, color:'#374151', display:'block', marginBottom:7, textTransform:'uppercase', letterSpacing:'0.04em' }}>Email Address *</label>
+                  <input type="email" value={form.email||''} onChange={e=>setForm({...form,email:e.target.value})} placeholder="you@company.com" required style={inp} onFocus={onF} onBlur={onB}/>
                 </div>
+              </div>
+              <div>
+                <label style={{ fontSize:12, fontWeight:700, color:'#374151', display:'block', marginBottom:7, textTransform:'uppercase', letterSpacing:'0.04em' }}>Mobile / WhatsApp *</label>
+                <div style={{ display:'flex', gap:8 }}>
+                  <select value={form.countryCode||'+91'} onChange={e=>setForm({...form,countryCode:e.target.value})}
+                    style={{ width:110, padding:'10px 8px', border:'1.5px solid #e2e8f0', borderRadius:11, fontSize:13, outline:'none', fontFamily:'inherit', background:'#fff', cursor:'pointer' }}
+                    onFocus={onF} onBlur={onB}>
+                    {[{c:'+91',l:'🇮🇳 +91'},{c:'+1',l:'🇺🇸 +1'},{c:'+44',l:'🇬🇧 +44'},{c:'+65',l:'🇸🇬 +65'},{c:'+971',l:'🇦🇪 +971'},{c:'+61',l:'🇦🇺 +61'},{c:'+49',l:'🇩🇪 +49'},{c:'+33',l:'🇫🇷 +33'}].map(x=>(
+                      <option key={x.c} value={x.c}>{x.l}</option>
+                    ))}
+                  </select>
+                  <input value={form.mobile} onChange={e=>setForm({...form,mobile:e.target.value.replace(/\D/g,'')})}
+                    placeholder="9876543210" required maxLength={12} style={{ ...inp, flex:1 }} onFocus={onF} onBlur={onB}/>
+                </div>
+                {form.mobile && form.mobile.length < 8 && <div style={{ fontSize:11, color:'#ef4444', marginTop:4 }}>Enter a valid mobile number</div>}
               </div>
               <div>
                 <label style={{ fontSize:12, fontWeight:700, color:'#374151', display:'block', marginBottom:7, textTransform:'uppercase', letterSpacing:'0.04em' }}>IT Skill / Technology *</label>
@@ -903,7 +949,7 @@ export default function HomePage() {
               </div>
               <button type="submit" disabled={submitting}
                 style={{ padding:'15px', borderRadius:14, background:submitting?'#f1f5f9':'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:submitting?'#94a3b8':'#fff', border:'none', fontSize:15, fontWeight:700, cursor:submitting?'not-allowed':'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, boxShadow:submitting?'none':'0 6px 20px rgba(59,130,246,0.35)' }}>
-                <Send size={16}/> {submitting?'Sending…':'Submit Requirement — We reply in 4 hours'}
+                <Send size={16}/> {submitting?'Sending…':'Submit Requirement'}
               </button>
             </form>
           )}
@@ -961,8 +1007,36 @@ export default function HomePage() {
               </div>
             ))}
           </div>
+          {/* App Download */}
+          <div style={{ borderTop:'1px solid rgba(255,255,255,0.08)', paddingTop:28, marginBottom:28, display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:20 }}>
+            <div>
+              <h4 style={{ fontWeight:800, fontSize:16, color:'#fff', margin:'0 0 4px' }}>Apply on the go</h4>
+              <p style={{ fontSize:13, color:'rgba(255,255,255,0.45)', margin:0 }}>Get real-time job updates on our App</p>
+            </div>
+            <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+              <a href="#" style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 20px', borderRadius:12, background:'#1e293b', border:'1px solid rgba(255,255,255,0.12)', textDecoration:'none', minWidth:155 }}
+                onMouseEnter={e=>e.currentTarget.style.borderColor='rgba(255,255,255,0.3)'}
+                onMouseLeave={e=>e.currentTarget.style.borderColor='rgba(255,255,255,0.12)'}>
+                <svg width="22" height="22" viewBox="0 0 24 24"><path d="M3.18 23.76a2 2 0 0 1-.68-.63V.87A2 2 0 0 1 3.18.24L13.5 12 3.18 23.76z" fill="#EA4335"/><path d="M16.82 15.35 5.3 21.94l8.2-9.94 3.32 3.35z" fill="#FBBC05"/><path d="M21.1 10.6a2 2 0 0 1 0 2.8l-4.28 2.45-3.32-3.35L16.82 9.1l4.28 1.5z" fill="#4285F4"/><path d="M5.3 2.06l11.52 6.59L13.5 12 3.18.24A2 2 0 0 1 5.3 2.06z" fill="#34A853"/></svg>
+                <div>
+                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.45)', textTransform:'uppercase', letterSpacing:'0.06em' }}>GET IT ON</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:'#fff' }}>Google Play</div>
+                </div>
+              </a>
+              <a href="#" style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 20px', borderRadius:12, background:'#1e293b', border:'1px solid rgba(255,255,255,0.12)', textDecoration:'none', minWidth:155 }}
+                onMouseEnter={e=>e.currentTarget.style.borderColor='rgba(255,255,255,0.3)'}
+                onMouseLeave={e=>e.currentTarget.style.borderColor='rgba(255,255,255,0.12)'}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="white"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                <div>
+                  <div style={{ fontSize:9, color:'rgba(255,255,255,0.45)', textTransform:'uppercase', letterSpacing:'0.06em' }}>Download on the</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:'#fff' }}>App Store</div>
+                </div>
+              </a>
+            </div>
+          </div>
+
           <div style={{ borderTop:'1px solid rgba(255,255,255,0.07)', paddingTop:24, display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:12 }}>
-            <p style={{ margin:0, fontSize:12, color:'rgba(255,255,255,0.22)' }}>© 2025 WorkSpace Support 360 Pvt. Ltd. All rights reserved.</p>
+            <p style={{ margin:0, fontSize:12, color:'rgba(255,255,255,0.22)' }}>© 2025 Mahvenx IT Solutions Pvt. Ltd. All rights reserved.</p>
             <div style={{ display:'flex', gap:6 }}>
               {COMPANIES.slice(0,6).map(c=>(
                 <span key={c} style={{ fontSize:10, padding:'3px 8px', borderRadius:6, background:'rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.2)', fontWeight:600 }}>{c}</span>

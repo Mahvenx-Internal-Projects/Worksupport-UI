@@ -102,6 +102,11 @@ const RegisterPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [selectedSkills, setSkills] = useState<string[]>([]);
   const [customSkill, setCustomSkill] = useState('');
+  const [photoPreview, setPhotoPreview] = useState<string|null>(null);
+  const [photoFile, setPhotoFile] = useState<File|null>(null);
+  const [projects, setProjects] = useState<{title:string;role:string;company:string;tech:string;desc:string;url:string;type:string}[]>([]);
+  const [addingProject, setAddingProject] = useState(false);
+  const [proj, setProj] = useState({title:'',role:'',company:'',tech:'',desc:'',url:'',type:'freelance'});
   const [skillCat, setSkillCat] = useState('All');
   const [supportTypes, setSupportTypes] = useState<string[]>(['hourly']);
 
@@ -115,7 +120,7 @@ const RegisterPage: React.FC = () => {
   const [avail, setAvail] = useState(DAYS.map(d=>({ day:d, on:['Mon','Tue','Wed','Thu','Fri'].includes(d), start:'18:00', end:'22:00' })));
 
   const steps = role==='freelancer'
-    ? ['Account','Profile','Availability','Skills','Review']
+    ? ['Account','Profile','Availability','Photo & Bio','Skills','Portfolio','Review']
     : ['Account','Company','Review'];
 
   const set=(k:string,v:string)=>setForm(f=>({...f,[k]:v}));
@@ -127,7 +132,8 @@ const RegisterPage: React.FC = () => {
     if(step===0) return form.name&&form.email&&form.password.length>=8&&form.password===form.confirmPassword&&form.mobile;
     if(step===1&&role==='freelancer') return form.currentRole&&form.currentCompany&&form.totalExp&&form.hourlyRate&&supportTypes.length>0;
     if(step===1&&role==='client') return form.companyName&&form.contactName;
-    if(step===3&&role==='freelancer') return selectedSkills.length>=3;
+    if(step===4&&role==='freelancer') return selectedSkills.length>=3;
+    if(step===5&&role==='freelancer') return true; // portfolio optional
     return true;
   };
 
@@ -135,21 +141,33 @@ const RegisterPage: React.FC = () => {
     if(!agreed){toast.error('Please agree to terms');return;}
     setLoading(true);
     try{
-      await register({ email:form.email, password:form.password, role:role==='client'?'Client':'Freelancer',
-        name:form.name, mobileNumber:form.mobile,
-        companyName:role==='client'?form.companyName:form.currentCompany,
-        contactName:role==='client'?form.contactName:undefined,
-        gstNumber:form.gstNumber||undefined,
+      await register({
+        // Core fields
+        email:        form.email,
+        password:     form.password,
+        role:         role==='client' ? 'Client' : 'Freelancer',
+        name:         form.name,
+        mobileNumber: form.mobile,
+        // Client fields
+        companyName:  role==='client' ? form.companyName : form.currentCompany,
+        contactName:  role==='client' ? form.contactName : form.name,
+        gstNumber:    form.gstNumber || undefined,
+        // Freelancer fields (sent directly to API — no localStorage needed)
+        currentRole:        role==='freelancer' ? form.currentRole : undefined,
+        currentCompany:     role==='freelancer' ? form.currentCompany : undefined,
+        totalExperience:    role==='freelancer' ? form.totalExp : undefined,
+        freelanceExperience:role==='freelancer' ? form.freelanceExp : undefined,
+        hourlyRate:         role==='freelancer' ? form.hourlyRate : undefined,
+        currency:           role==='freelancer' ? form.currency : undefined,
+        timezone:           role==='freelancer' ? form.timezone : undefined,
+        bio:                role==='freelancer' ? form.bio : undefined,
+        skills:             role==='freelancer' ? selectedSkills : undefined,
+        supportTypes:       role==='freelancer' ? supportTypes : undefined,
+        availability:       role==='freelancer' ? avail : undefined,
+        portfolioProjects:  role==='freelancer' ? projects : undefined,
+        totalExp:           role==='freelancer' ? parseInt(form.totalExp||'0') : undefined,
+        freelanceExp:       role==='freelancer' ? parseInt(form.freelanceExp||'0') : undefined,
       } as any);
-      if(role==='freelancer'){
-        localStorage.setItem('pendingProfile',JSON.stringify({
-          currentRole:form.currentRole,currentCompany:form.currentCompany,
-          totalExp:form.totalExp,freelanceExp:form.freelanceExp,
-          hourlyRate:form.hourlyRate,currency:form.currency,
-          timezone:form.timezone,bio:form.bio,skills:selectedSkills,
-          supportTypes, availability:avail.filter(a=>a.on),
-        }));
-      }
       navigate(`/login?registered=true&email=${encodeURIComponent(form.email)}&role=${role}`);
     }catch(err:any){ toast.error(err?.response?.data?.message||'Registration failed'); }
     finally{ setLoading(false); }
@@ -317,8 +335,55 @@ const RegisterPage: React.FC = () => {
       </div>
     );
 
-    /* ── STEP 3 Freelancer: Skills ── */
+
+    /* ── STEP 3 Freelancer: Photo & Bio ── */
     if(step===3&&role==='freelancer') return(
+      <div style={{ display:'flex',flexDirection:'column',gap:16 }}>
+        {/* Photo upload */}
+        <div style={{ textAlign:'center' }}>
+          <div style={{ fontSize:12,fontWeight:700,color:'#374151',marginBottom:12 }}>Profile Photo (optional)</div>
+          <div style={{ position:'relative',display:'inline-block' }}>
+            <div style={{ width:88,height:88,borderRadius:'50%',background:'linear-gradient(135deg,#4f46e5,#7c3aed)',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',border:'3px solid #e2e8f0',margin:'0 auto' }}>
+              {photoPreview
+                ? <img src={photoPreview} alt="preview" style={{ width:'100%',height:'100%',objectFit:'cover' }}/>
+                : <span style={{ fontSize:32,fontWeight:900,color:'#fff' }}>{form.name?.[0]?.toUpperCase()||'?'}</span>
+              }
+            </div>
+            <label style={{ position:'absolute',bottom:0,right:-4,width:26,height:26,borderRadius:'50%',background:'#4f46e5',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',border:'2px solid #fff',boxShadow:'0 2px 6px rgba(79,70,229,0.4)' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              <input type="file" accept="image/*" style={{ display:'none' }} onChange={e=>{
+                const f=e.target.files?.[0];
+                if(f){setPhotoFile(f);const r=new FileReader();r.onload=ev=>setPhotoPreview(ev.target?.result as string);r.readAsDataURL(f);}
+              }}/>
+            </label>
+          </div>
+          {photoPreview&&<button type="button" onClick={()=>{setPhotoPreview(null);setPhotoFile(null);}} style={{ marginTop:8,fontSize:11,color:'#ef4444',background:'none',border:'none',cursor:'pointer' }}>Remove photo</button>}
+          <div style={{ fontSize:11,color:'#94a3b8',marginTop:6 }}>JPG, PNG · Max 2MB · Shown as avatar (alias protects identity)</div>
+        </div>
+
+        <div style={{ height:1,background:'#f1f5f9' }}/>
+
+        {/* Bio */}
+        <div>
+          <label style={{ fontSize:11,fontWeight:700,color:'#64748b',display:'block',marginBottom:6,textTransform:'uppercase' as const,letterSpacing:'0.06em' }}>Professional Bio <span style={{ color:'#94a3b8',fontWeight:400,textTransform:'none' as const }}>(optional)</span></label>
+          <textarea value={form.bio} onChange={e=>set('bio',e.target.value)} rows={4}
+            placeholder="Brief intro shown to clients on your alias profile. E.g: '8+ years in backend dev, ex-Infosys. Specialise in Node.js microservices and AWS infrastructure. Available evenings IST.'"
+            style={{ ...inp,resize:'none' as const,fontSize:12,lineHeight:1.7 }} onFocus={onF} onBlur={onB}/>
+          <div style={{ display:'flex',justifyContent:'space-between',marginTop:4 }}>
+            <span style={{ fontSize:11,color:'#94a3b8' }}>Highlight your expertise, not your identity</span>
+            <span style={{ fontSize:11,color:form.bio.length>400?'#ef4444':'#94a3b8' }}>{form.bio.length}/500</span>
+          </div>
+        </div>
+
+        {/* Years breakdown */}
+        <div style={{ background:'#f8fafc',borderRadius:12,padding:'12px 14px',fontSize:12,color:'#64748b',lineHeight:1.75 }}>
+          💡 <strong>Tip:</strong> Clients see your alias name, experience years, skills and bio — never your real name, employer or photo identity. Your privacy is always protected.
+        </div>
+      </div>
+    );
+
+    /* ── STEP 4 Freelancer: Skills ── */
+    if(step===4&&role==='freelancer') return(
       <div style={{ display:'flex',flexDirection:'column',gap:12 }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between' }}>
           <div>
@@ -391,6 +456,105 @@ const RegisterPage: React.FC = () => {
       </div>
     );
 
+
+    /* ── STEP 5 Freelancer: Portfolio ── */
+    if(step===5&&role==='freelancer') return(
+      <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
+        <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between' }}>
+          <div>
+            <div style={{ fontSize:13,fontWeight:700,color:'#0f172a' }}>Past Projects <span style={{ fontSize:11,color:'#94a3b8',fontWeight:400 }}>(optional — builds client trust)</span></div>
+            <div style={{ fontSize:11,color:'#64748b',marginTop:2 }}>Add previous work — freelance, employment, or personal. Company name stays private.</div>
+          </div>
+          <div style={{ padding:'4px 12px',borderRadius:100,background:'#eff6ff',border:'1px solid #bfdbfe',fontSize:12,fontWeight:700,color:'#1d4ed8' }}>
+            {projects.length} project{projects.length!==1?'s':''}
+          </div>
+        </div>
+
+        {/* Existing projects */}
+        {projects.map((p,i)=>(
+          <div key={i} style={{ background:'#fff',border:'1.5px solid #e2e8f0',borderRadius:14,padding:'12px 14px',position:'relative' }}>
+            <button type="button" onClick={()=>setProjects(ps=>ps.filter((_,j)=>j!==i))}
+              style={{ position:'absolute',top:10,right:10,background:'none',border:'none',cursor:'pointer',color:'#94a3b8',fontSize:16,lineHeight:1 }}>×</button>
+            <div style={{ fontWeight:700,fontSize:13,color:'#0f172a',marginBottom:3 }}>{p.title}</div>
+            <div style={{ fontSize:11,color:'#64748b',marginBottom:5 }}>{p.role}{p.company?` · ${p.company}`:''}</div>
+            <div style={{ display:'flex',flexWrap:'wrap' as const,gap:5,marginBottom:5 }}>
+              {p.tech.split(',').filter(Boolean).map(t=>(
+                <span key={t} style={{ padding:'2px 8px',borderRadius:6,background:'#eff6ff',color:'#1d4ed8',fontSize:10,fontWeight:600,border:'1px solid #bfdbfe' }}>{t.trim()}</span>
+              ))}
+            </div>
+            {p.desc&&<div style={{ fontSize:11,color:'#475569',lineHeight:1.55 }}>{p.desc.slice(0,120)}{p.desc.length>120?'…':''}</div>}
+          </div>
+        ))}
+
+        {/* Add project form */}
+        {addingProject?(
+          <div style={{ background:'#f8fafc',border:'1.5px dashed #bfdbfe',borderRadius:14,padding:'14px 16px',display:'flex',flexDirection:'column',gap:10 }}>
+            <div style={{ fontWeight:700,fontSize:12,color:'#1d4ed8',marginBottom:2 }}>New Project</div>
+            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
+              <div>
+                <label style={{ fontSize:10,fontWeight:700,color:'#64748b',display:'block',marginBottom:4,textTransform:'uppercase' as const }}>Title *</label>
+                <input value={proj.title} onChange={e=>setProj(p=>({...p,title:e.target.value}))} placeholder="e.g. E-commerce Platform" style={{ ...inp,fontSize:12 }} onFocus={onF} onBlur={onB}/>
+              </div>
+              <div>
+                <label style={{ fontSize:10,fontWeight:700,color:'#64748b',display:'block',marginBottom:4,textTransform:'uppercase' as const }}>Your Role *</label>
+                <input value={proj.role} onChange={e=>setProj(p=>({...p,role:e.target.value}))} placeholder="e.g. Backend Developer" style={{ ...inp,fontSize:12 }} onFocus={onF} onBlur={onB}/>
+              </div>
+            </div>
+            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
+              <div>
+                <label style={{ fontSize:10,fontWeight:700,color:'#64748b',display:'block',marginBottom:4,textTransform:'uppercase' as const }}>Client / Company <span style={{ fontWeight:400 }}>(optional 🔒)</span></label>
+                <input value={proj.company} onChange={e=>setProj(p=>({...p,company:e.target.value}))} placeholder="Optional — not shown publicly" style={{ ...inp,fontSize:12 }} onFocus={onF} onBlur={onB}/>
+              </div>
+              <div>
+                <label style={{ fontSize:10,fontWeight:700,color:'#64748b',display:'block',marginBottom:4,textTransform:'uppercase' as const }}>Type</label>
+                <select value={proj.type} onChange={e=>setProj(p=>({...p,type:e.target.value}))} style={{ ...inp,fontSize:12,cursor:'pointer' }}>
+                  <option value="freelance">Freelance</option>
+                  <option value="employment">Employment</option>
+                  <option value="personal">Personal / Open Source</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize:10,fontWeight:700,color:'#64748b',display:'block',marginBottom:4,textTransform:'uppercase' as const }}>Tech Stack *</label>
+              <input value={proj.tech} onChange={e=>setProj(p=>({...p,tech:e.target.value}))} placeholder="e.g. React, Node.js, PostgreSQL, AWS" style={{ ...inp,fontSize:12 }} onFocus={onF} onBlur={onB}/>
+            </div>
+            <div>
+              <label style={{ fontSize:10,fontWeight:700,color:'#64748b',display:'block',marginBottom:4,textTransform:'uppercase' as const }}>Description / Outcome <span style={{ fontWeight:400 }}>(optional)</span></label>
+              <textarea value={proj.desc} onChange={e=>setProj(p=>({...p,desc:e.target.value}))} rows={2}
+                placeholder="What did you build / achieve? e.g. 'Reduced API response time by 60%'" style={{ ...inp,resize:'none' as const,fontSize:12 }} onFocus={onF} onBlur={onB}/>
+            </div>
+            <div>
+              <label style={{ fontSize:10,fontWeight:700,color:'#64748b',display:'block',marginBottom:4,textTransform:'uppercase' as const }}>Live URL / Repo <span style={{ fontWeight:400 }}>(optional)</span></label>
+              <input value={proj.url} onChange={e=>setProj(p=>({...p,url:e.target.value}))} placeholder="https://..." style={{ ...inp,fontSize:12 }} onFocus={onF} onBlur={onB}/>
+            </div>
+            <div style={{ display:'flex',gap:8 }}>
+              <button type="button" onClick={()=>{
+                if(!proj.title||!proj.role||!proj.tech){toast.error('Fill title, role and tech stack');return;}
+                setProjects(ps=>[...ps,proj]);
+                setProj({title:'',role:'',company:'',tech:'',desc:'',url:'',type:'freelance'});
+                setAddingProject(false);
+              }} style={{ flex:1,padding:'9px',borderRadius:10,background:'#0f172a',color:'#fff',border:'none',fontSize:12,fontWeight:700,cursor:'pointer' }}>
+                ✅ Save Project
+              </button>
+              <button type="button" onClick={()=>{setAddingProject(false);setProj({title:'',role:'',company:'',tech:'',desc:'',url:'',type:'freelance'});}}
+                style={{ padding:'9px 16px',borderRadius:10,border:'1.5px solid #e2e8f0',background:'#fff',fontSize:12,fontWeight:600,color:'#374151',cursor:'pointer' }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        ):(
+          <button type="button" onClick={()=>setAddingProject(true)}
+            style={{ padding:'12px',borderRadius:14,border:'1.5px dashed #bfdbfe',background:'#f0f9ff',fontSize:13,fontWeight:700,color:'#1d4ed8',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8 }}>
+            + Add {projects.length===0?'a project':'another project'}
+          </button>
+        )}
+
+        <div style={{ background:'#f0fdf4',border:'1px solid #86efac',borderRadius:10,padding:'10px 13px',fontSize:11,color:'#15803d',lineHeight:1.65 }}>
+          💡 Projects are shown on your portfolio page (under your alias). Client names are kept private. You can add/edit more projects from your dashboard after registering.
+        </div>
+      </div>
+    );
+
     /* ── LAST STEP: Review ── */
     return(
       <div style={{ display:'flex',flexDirection:'column',gap:12 }}>
@@ -403,6 +567,7 @@ const RegisterPage: React.FC = () => {
               {l:'Rate',v:`${form.currency==='INR'?'₹':'$'}${form.hourlyRate}/hr`},
               {l:'Support types',v:supportTypes.join(', ')},
               {l:'Skills',v:selectedSkills.slice(0,4).join(', ')+(selectedSkills.length>4?` +${selectedSkills.length-4}`:'')},
+              {l:'Projects',v:projects.length>0?`${projects.length} project${projects.length>1?'s':''} added`:'None added (can add later)'},
             ]:[
               {l:'Company',v:form.companyName},{l:'Contact',v:form.contactName},
             ]),
@@ -541,19 +706,19 @@ const RegisterPage: React.FC = () => {
               <div style={{ marginBottom:14 }}>
                 <div style={{ fontSize:10,fontWeight:800,color:'#4f46e5',letterSpacing:'0.08em',textTransform:'uppercase' as const,marginBottom:3 }}>Step {step+1} — {steps[step]}</div>
                 <h2 style={{ fontSize:20,fontWeight:900,color:'#0f172a',letterSpacing:'-0.03em',margin:0 }}>
-                  {step===0?'Create your account':step===1&&role==='freelancer'?'Your profile & services':step===1&&role==='client'?'Company details':step===2&&role==='freelancer'?'Your availability':step===3?'Your skills':'Review & submit'}
+                  {step===0?'Create your account':step===1&&role==='freelancer'?'Your profile & services':step===1&&role==='client'?'Company details':step===2&&role==='freelancer'?'Your availability':step===3&&role==='freelancer'?'Photo & bio':step===4&&role==='freelancer'?'Your skills':step===5&&role==='freelancer'?'Portfolio projects':'Review & submit'}
                 </h2>
               </div>
 
               {/* NAV BUTTONS — TOP */}
-              <NavBtns step={step} steps={steps} canNext={!!canNext()} onBack={()=>setStep(s=>s-1)} onNext={()=>canNext()?setStep(s=>s+1):toast.error(step===3?'Select at least 3 skills':'Please fill required fields')} onSubmit={handleSubmit} loading={loading} agreed={agreed}/>
+              <NavBtns step={step} steps={steps} canNext={!!canNext()} onBack={()=>setStep(s=>s-1)} onNext={()=>canNext()?setStep(s=>s+1):toast.error(step===4?'Select at least 3 skills':'Please fill required fields')} onSubmit={handleSubmit} loading={loading} agreed={agreed}/>
 
               {/* Step content */}
               {stepContent()}
 
               {/* NAV BUTTONS — BOTTOM */}
               <div style={{ paddingTop:14,paddingBottom:20 }}>
-                <NavBtns step={step} steps={steps} canNext={!!canNext()} onBack={()=>setStep(s=>s-1)} onNext={()=>canNext()?setStep(s=>s+1):toast.error(step===3?'Select at least 3 skills':'Please fill required fields')} onSubmit={handleSubmit} loading={loading} agreed={agreed}/>
+                <NavBtns step={step} steps={steps} canNext={!!canNext()} onBack={()=>setStep(s=>s-1)} onNext={()=>canNext()?setStep(s=>s+1):toast.error(step===4?'Select at least 3 skills':'Please fill required fields')} onSubmit={handleSubmit} loading={loading} agreed={agreed}/>
               </div>
             </div>
           </div>
