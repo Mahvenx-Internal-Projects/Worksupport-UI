@@ -10,7 +10,6 @@ import { useAuthStore } from '../../store/authStore';
 import { useFeaturedFreelancers, usePublicRequirements } from '../../hooks/useApi';
 import SupportChatWidget from '../../components/SupportChatWidget';
 import { publicApi } from '../../services/endpoints';
-import { ENV } from '../../config/env';
 import toast from 'react-hot-toast';
 
 /* ── Design tokens ─────────────────────────────────────────────
@@ -299,7 +298,7 @@ export default function HomePage() {
     setExpandLoading(true);
     try {
       const token = localStorage.getItem('accessToken');
-      const res = await fetch(`${ENV.API_URL}/api/ai/expand-requirement`, {
+      const res = await fetch('https://api.worksupport360.com/api/ai/expand-requirement', {
         method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
         body: JSON.stringify({ description: expandInput })
       });
@@ -390,7 +389,23 @@ export default function HomePage() {
         ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:3px}
         section{scroll-margin-top:68px}
         a{text-decoration:none;color:inherit}
-        @media(max-width:768px){.grid-4{grid-template-columns:repeat(2,1fr)!important}.grid-3{grid-template-columns:1fr!important}.hide-mobile{display:none!important}.hero-grid{grid-template-columns:1fr!important}}
+        @media(max-width:768px){
+          .hide-desktop{display:flex!important}
+          .grid-4{grid-template-columns:repeat(2,1fr)!important}
+          .grid-3{grid-template-columns:1fr!important}
+          .hide-mobile{display:none!important}
+          .hero-grid{grid-template-columns:1fr!important}
+          .mobile-col{flex-direction:column!important}
+          .mobile-full{width:100%!important}
+          .mobile-pad{padding:20px!important}
+          .mobile-text-sm{font-size:14px!important}
+          .mobile-hide{display:none!important}
+        }
+        @media(max-width:480px){
+          .grid-4{grid-template-columns:1fr 1fr!important}
+          .grid-3{grid-template-columns:1fr!important}
+          .grid-2{grid-template-columns:1fr!important}
+        }
       `}</style>
 
       {/* ══ NAV ══ */}
@@ -399,7 +414,7 @@ export default function HomePage() {
         background: scrolled ? 'rgba(255,255,255,0.98)' : '#fff',
         backdropFilter:'blur(20px)',
         borderBottom:`1px solid ${scrolled ? '#e2e8f0' : '#f1f5f9'}`,
-        display:'flex', alignItems:'center', padding:'0 40px',
+        display:'flex', alignItems:'center', padding:'0 clamp(12px,3vw,40px)',
         transition:'all .25s', boxShadow: scrolled ? '0 1px 20px rgba(0,0,0,0.06)' : 'none',
       }}>
         <div style={{ maxWidth:1300, width:'100%', margin:'0 auto', display:'flex', alignItems:'center', gap:8 }}>
@@ -411,6 +426,14 @@ export default function HomePage() {
                 WorkSupport<span style={{ color:'#3b82f6' }}> 360</span>
               </span>
             </div>
+          </button>
+
+          {/* Hamburger - mobile only */}
+          <button onClick={()=>setMenuOpen(m=>!m)} className="hide-desktop"
+            style={{ display:'none', background:'none', border:'none', cursor:'pointer', padding:4, marginLeft:'auto' }}>
+            <div style={{ width:22, height:2, background:'#374151', marginBottom:5, borderRadius:2 }}/>
+            <div style={{ width:22, height:2, background:'#374151', marginBottom:5, borderRadius:2 }}/>
+            <div style={{ width:22, height:2, background:'#374151', borderRadius:2 }}/>
           </button>
 
           {/* Nav links */}
@@ -448,6 +471,22 @@ export default function HomePage() {
         </div>
       </nav>
 
+      {/* Mobile menu */}
+      {menuOpen && (
+        <div style={{ position:'fixed', top:68, left:0, right:0, background:'#fff', zIndex:299, borderBottom:'1px solid #e2e8f0', padding:'16px 20px', display:'flex', flexDirection:'column', gap:12, boxShadow:'0 8px 24px rgba(0,0,0,0.1)' }}>
+          {[['IT Experts','#experts'],['Find Work','#jobs'],['How it works','#how'],['Contact Us','#contact']].map(([l,h])=>(
+            <a key={l} href={h} onClick={()=>setMenuOpen(false)} style={{ fontSize:16, fontWeight:600, color:'#374151', padding:'8px 0', borderBottom:'1px solid #f1f5f9' }}>{l}</a>
+          ))}
+          {!isAuthenticated && (<>
+            <button onClick={()=>{navigate('/login');setMenuOpen(false);}} style={{ padding:'12px', borderRadius:10, border:'1.5px solid #1e3a5f', background:'transparent', color:'#1e3a5f', fontSize:15, fontWeight:700, cursor:'pointer' }}>Sign in</button>
+            <button onClick={()=>{navigate('/register');setMenuOpen(false);}} style={{ padding:'12px', borderRadius:10, background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:'#fff', border:'none', fontSize:15, fontWeight:700, cursor:'pointer' }}>Get started →</button>
+          </>)}
+          {isAuthenticated && (
+            <button onClick={()=>{const r=userRole;navigate(r==='admin'?'/admin':r==='freelancer'?'/freelancer':'/client');setMenuOpen(false);}} style={{ padding:'12px', borderRadius:10, background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:'#fff', border:'none', fontSize:15, fontWeight:700, cursor:'pointer' }}>Dashboard →</button>
+          )}
+        </div>
+      )}
+
       {/* ══ HERO ══ */}
       <section style={{ paddingTop:68, background:'linear-gradient(160deg,#0a0f1e 0%,#0f1f3d 40%,#1a2a4a 70%,#0a0f1e 100%)', position:'relative', overflow:'hidden', minHeight:'100vh', display:'flex', flexDirection:'column' }}>
 
@@ -475,7 +514,7 @@ export default function HomePage() {
           .srch-inp:focus{outline:none}
         `}</style>
 
-        <div style={{ maxWidth:1200, margin:'0 auto', padding:'44px 40px 0', position:'relative', zIndex:1, flex:1, display:'flex', flexDirection:'column', gap:0 }}>
+        <div style={{ maxWidth:1200, margin:'0 auto', padding:'clamp(20px,4vw,44px) clamp(16px,4vw,40px) 0', position:'relative', zIndex:1, flex:1, display:'flex', flexDirection:'column', gap:0 }}>
 
           {/* ── FREELANCER SEARCH — TOP ── */}
           <div style={{ animation:'fadeSlideUp .6s ease both', marginBottom:40 }}>
@@ -485,7 +524,7 @@ export default function HomePage() {
               <div style={{ height:1, flex:1, maxWidth:80, background:'rgba(255,255,255,0.1)' }}/>
             </div>
             {/* Search pill */}
-            <div style={{ maxWidth:820, margin:'0 auto', background:'rgba(255,255,255,0.97)', borderRadius:100, display:'flex', alignItems:'center', padding:'7px 7px 7px 22px', boxShadow:'0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1)', gap:0 }}>
+            <div style={{ maxWidth:820, margin:'0 auto', background:'rgba(255,255,255,0.97)', borderRadius:'clamp(12px,3vw,100px)', display:'flex', alignItems:'center', padding:'7px 7px 7px 16px', flexWrap:'wrap', boxShadow:'0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1)', gap:0 }}>
               <Search size={17} color="#94a3b8" style={{ flexShrink:0 }}/>
               <input className="srch-inp" value={heroSearch} onChange={e=>setHeroSearch(e.target.value)}
                 onKeyDown={e=>{if(e.key==='Enter'){const t=(userRole||'').toLowerCase()==='freelancer'?'jobs':'experts';document.getElementById(t)?.scrollIntoView({behavior:'smooth'});}}}
@@ -539,7 +578,7 @@ export default function HomePage() {
 
           {/* ── HEADLINE ── */}
           <div style={{ textAlign:'center', marginBottom:14, animation:'fadeSlideUp .7s .2s ease both' }}>
-            <h1 style={{ fontSize:'clamp(2rem,3.5vw,3rem)', fontWeight:900, color:'#fff', letterSpacing:'-0.05em', lineHeight:1.04, margin:'0 auto', maxWidth:860 }}>
+            <h1 style={{ fontSize:'clamp(1.6rem,5vw,3rem)', fontWeight:900, color:'#fff', letterSpacing:'-0.05em', lineHeight:1.04, margin:'0 auto', maxWidth:860 }}>
               Hire IT Experts &amp;{' '}
               <span style={{ background:'linear-gradient(90deg,#60a5fa 0%,#a78bfa 50%,#60a5fa 100%)', backgroundSize:'200%', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', animation:'shimmer 4s linear infinite' }}>
                 Find Freelance Work
@@ -551,7 +590,7 @@ export default function HomePage() {
           </p>
 
           {/* ── 3 CTAs ── */}
-          <div style={{ display:'flex', justifyContent:'center', gap:12, marginBottom:44, flexWrap:'wrap', animation:'fadeSlideUp .7s .3s ease both' }}>
+          <div style={{ display:'flex', justifyContent:'center', gap:10, marginBottom:44, flexWrap:'wrap', animation:'fadeSlideUp .7s .3s ease both' }}>
             <button onClick={()=>document.getElementById('experts')?.scrollIntoView({behavior:'smooth'})}
               style={{ display:'flex', alignItems:'center', gap:8, padding:'13px 28px', borderRadius:12, background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:'#fff', border:'none', fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 6px 24px rgba(30,58,95,0.4)' }}>
               🏢 Hire an Expert
@@ -672,7 +711,7 @@ export default function HomePage() {
       </section>
 
             {/* ══ EXPERTS ══ */}
-      <section id="experts" style={{ padding:'72px 40px', background:'#f8fafc' }}>
+      <section id="experts" style={{ padding:'clamp(40px,6vw,72px) clamp(16px,4vw,40px)', background:'#f8fafc' }}>
         <div style={{ maxWidth:1300, margin:'0 auto' }}>
           <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', marginBottom:24, flexWrap:'wrap', gap:12 }}>
             <div>
@@ -688,7 +727,7 @@ export default function HomePage() {
           </div>
 
           {flLoading ? (
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:14 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))', gap:14 }}>
               {[...Array(10)].map((_,i)=>(
                 <div key={i} style={{ background:'#fff', borderRadius:16, height:180, border:'1.5px solid #f1f5f9', backgroundImage:'linear-gradient(90deg,#f8fafc 25%,#f1f5f9 50%,#f8fafc 75%)', backgroundSize:'400% 100%', animation:'shimmer 1.4s linear infinite' }}/>
               ))}
@@ -700,7 +739,7 @@ export default function HomePage() {
               <button onClick={()=>navigate('/register?role=freelancer')} style={{ padding:'11px 24px', borderRadius:12, background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer' }}>Register as Expert</button>
             </div>
           ) : (<>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:14 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))', gap:14 }}>
               {(freelancers as any[]).slice(pgStart, pgStart+pageSize).map((f:any,i:number)=>{
                 const grads=['linear-gradient(135deg,#1e3a5f,#3b82f6)','linear-gradient(135deg,#7c3aed,#a855f7)','linear-gradient(135deg,#059669,#10b981)','linear-gradient(135deg,#0891b2,#06b6d4)','linear-gradient(135deg,#1d4ed8,#6366f1)','linear-gradient(135deg,#15803d,#059669)','linear-gradient(135deg,#be185d,#ec4899)','linear-gradient(135deg,#b45309,#f59e0b)'];
                 const name=f.userName||f.UserName||f.name||f.Name||'Expert';
@@ -798,7 +837,7 @@ export default function HomePage() {
         </div>
       </section>
       {/* ══ HOW IT WORKS ══ */}
-      <section id="how" style={{ padding:'80px 40px', background:'linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#0f172a 100%)', position:'relative', overflow:'hidden' }}>
+      <section id="how" style={{ padding:'clamp(40px,6vw,80px) clamp(16px,4vw,40px)', background:'linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#0f172a 100%)', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', top:-100, right:-100, width:500, height:500, borderRadius:'50%', background:'rgba(59,130,246,0.06)', filter:'blur(60px)', pointerEvents:'none' }}/>
         <div style={{ maxWidth:1300, margin:'0 auto', position:'relative', zIndex:1 }}>
           <div style={{ textAlign:'center', marginBottom:52 }}>
@@ -830,7 +869,7 @@ export default function HomePage() {
 
 
       {/* ══ JOB BOARD ══ */}
-      <section id="jobs" style={{ padding:'72px 40px', background:'#fff' }}>
+      <section id="jobs" style={{ padding:'clamp(40px,6vw,72px) clamp(16px,4vw,40px)', background:'#fff' }}>
         <div style={{ maxWidth:1300, margin:'0 auto' }}>
           <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', marginBottom:24, flexWrap:'wrap', gap:12 }}>
             <div>
@@ -911,7 +950,7 @@ export default function HomePage() {
       </section>
 
       {/* ══ TESTIMONIALS ══ */}
-      <section style={{ padding:'80px 40px', background:'#f8fafc' }}>
+      <section style={{ padding:'clamp(40px,6vw,80px) clamp(16px,4vw,40px)', background:'#f8fafc' }}>
         <div style={{ maxWidth:1300, margin:'0 auto' }}>
           <div style={{ textAlign:'center', marginBottom:44 }}>
             <p style={{ margin:'0 0 8px', fontSize:12, fontWeight:700, color:'#3b82f6', letterSpacing:'0.08em', textTransform:'uppercase' }}>Client stories</p>
@@ -1048,7 +1087,7 @@ export default function HomePage() {
       </section>
 
       {/* ══ CONTACT FORM ══ */}
-      <section id="contact" style={{ padding:'80px 40px', background:'#fff' }}>
+      <section id="contact" style={{ padding:'clamp(40px,6vw,80px) clamp(16px,4vw,40px)', background:'#fff' }}>
         <div style={{ maxWidth:720, margin:'0 auto' }}>
           <div style={{ textAlign:'center', marginBottom:40 }}>
             <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'5px 16px', borderRadius:100, background:'#fef2f2', border:'1px solid #fca5a5', marginBottom:14 }}>
@@ -1127,7 +1166,7 @@ export default function HomePage() {
       </section>
 
       {/* ══ FAQ ══ */}
-      <section style={{ padding:'80px 40px', background:'#f8fafc' }}>
+      <section style={{ padding:'clamp(40px,6vw,80px) clamp(16px,4vw,40px)', background:'#f8fafc' }}>
         <div style={{ maxWidth:760, margin:'0 auto' }}>
           <div style={{ textAlign:'center', marginBottom:40 }}>
             <p style={{ margin:'0 0 8px', fontSize:12, fontWeight:700, color:'#3b82f6', letterSpacing:'0.08em', textTransform:'uppercase' }}>Got questions?</p>
@@ -1148,7 +1187,7 @@ export default function HomePage() {
       {/* ══ FOOTER ══ */}
       <footer style={{ background:'#0f172a', padding:'56px 40px 32px' }}>
         <div style={{ maxWidth:1300, margin:'0 auto' }}>
-          <div style={{ display:'grid', gridTemplateColumns:'1.5fr 1fr 1fr 1fr', gap:48, marginBottom:52 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:32, marginBottom:52 }}>
             <div>
               <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
                 <WSLogo size={36}/>
@@ -1274,9 +1313,9 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* <div style={{ padding:'10px 20px', textAlign:'center', fontSize:11, color:'#94a3b8', borderTop:'1px solid #f1f5f9' }}>
+          <div style={{ padding:'10px 20px', textAlign:'center', fontSize:11, color:'#94a3b8', borderTop:'1px solid #f1f5f9' }}>
             +91-9441363687 · Mon–Sat 9AM–8PM IST
-          </div> */}
+          </div>
         </div>
       )}
 

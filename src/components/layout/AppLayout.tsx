@@ -63,6 +63,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -89,7 +90,30 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         @keyframes fadeIn  { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:none } }
         .nav-item:hover { background: rgba(255,255,255,0.12) !important; transform: translateX(2px) }
         .nav-item.active { background: rgba(255,255,255,0.15) !important; }
+        @media(max-width:768px){
+          .sidebar-desktop{transform:translateX(-100%)!important;position:fixed!important;z-index:500!important;height:100vh!important;transition:transform .3s ease!important}
+          .sidebar-open{transform:translateX(0)!important}
+          .mobile-header{display:flex!important}
+          .main-content{margin-left:0!important}
+        }
+        @media(min-width:769px){
+          .mobile-header{display:none!important}
+          .sidebar-desktop{transform:none!important}
+        }
       `}</style>
+
+      {/* ── MOBILE HEADER ─────────────────────────────────── */}
+      <div className="mobile-header" style={{ display:'none', position:'fixed', top:0, left:0, right:0, height:56, background:'#0f172a', zIndex:600, alignItems:'center', padding:'0 16px', gap:12, borderBottom:'1px solid rgba(255,255,255,0.1)' }}>
+        <button onClick={()=>setMobileOpen(m=>!m)} style={{ background:'none', border:'none', cursor:'pointer', padding:4, display:'flex', flexDirection:'column', gap:4 }}>
+          <div style={{ width:22, height:2, background:'#fff', borderRadius:2 }}/>
+          <div style={{ width:22, height:2, background:'#fff', borderRadius:2 }}/>
+          <div style={{ width:22, height:2, background:'#fff', borderRadius:2 }}/>
+        </button>
+        <span style={{ fontWeight:800, fontSize:16, color:'#fff' }}>WorkSupport<span style={{ color:'#3b82f6' }}>360</span></span>
+      </div>
+
+      {/* Mobile overlay */}
+      {mobileOpen && <div onClick={()=>setMobileOpen(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:499 }}/>}
 
       {/* ── SIDEBAR ─────────────────────────────────────── */}
       <div style={{
@@ -173,7 +197,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
       </div>
 
       {/* ── MAIN ─────────────────────────────────────────── */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+      <div className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
 
         {/* Top bar */}
         <header style={{ height: 56, background: '#fff', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', padding: '0 24px', gap: 12, flexShrink: 0, boxShadow: '0 1px 3px rgba(0,0,0,0.04)', zIndex: 10 }}>

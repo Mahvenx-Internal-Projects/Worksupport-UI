@@ -4,7 +4,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="theme-color" content="#1B3FD4" />
+  <meta name="theme-color" content="#1e3a5f" />
   <title>Work Support 360 — Hire Verified Tech Experts from Top MNCs</title>
   <meta name="description"
     content="India's first identity-safe freelancer marketplace. Hire verified engineers, data scientists & DevOps experts from Infosys, TCS, Wipro — working under a privacy alias. Your project delivered, their employer never notified." />
@@ -13,6 +13,15 @@
   <meta name="author" content="WorkSupport360" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://worksupport360.com" />
+
+  <!-- ── FAVICON (browser tab icon) ──────────────────────── -->
+  <link rel="icon" href="/favicon.ico" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/logo192.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/logo192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <!-- ──────────────────────────────────────────────────────── -->
+
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://worksupport360.com" />
   <meta property="og:title" content="WorkSupport360 — Hire Verified Tech Experts from Top MNCs" />
@@ -30,32 +39,91 @@
   <meta name="twitter:description"
     content="1,200+ verified MNC engineers available for freelance projects. Identity-safe, fast matching, escrow payments." />
   <meta name="twitter:image" content="https://worksupport360.com/og-image.png" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/logo192.png" />
+
   <link rel="manifest" href="/manifest.json" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
     href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap"
     rel="stylesheet" />
+
   <script type="application/ld+json">{
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      "name": "WorkSupport360",
-      "url": "https://worksupport360.com",
-      "description": "Identity-safe freelancer marketplace connecting clients with verified MNC tech professionals",
-      "foundingDate": "2024",
-      "areaServed": ["IN","US","GB","SG"],
-      "serviceType": "Freelance Technology Consulting",
-      "sameAs": [
-        "https://twitter.com/worksupport360",
-        "https://linkedin.com/company/worksupport360"
-      ]
-    }</script>
-  <script defer="defer" src="/static/js/main.b1b0a6c2.js"></script>
-  <link href="/static/css/main.4b918111.css" rel="stylesheet">
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "WorkSupport360",
+    "url": "https://worksupport360.com",
+    "description": "Identity-safe freelancer marketplace connecting clients with verified MNC tech professionals",
+    "foundingDate": "2024",
+    "areaServed": ["IN","US","GB","SG"],
+    "serviceType": "Freelance Technology Consulting",
+    "sameAs": [
+      "https://twitter.com/worksupport360",
+      "https://linkedin.com/company/worksupport360"
+    ]
+  }</script>
+
+  <style>
+    * {
+      box-sizing: border-box
+    }
+
+    /* Mobile base */
+    @media(max-width:768px) {
+      body {
+        overflow-x: hidden
+      }
+
+      /* AppLayout */
+      .main-content {
+        padding-top: 56px !important
+      }
+
+      /* Tables scroll horizontal */
+      table {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch
+      }
+
+      /* Forms full width */
+      input,
+      select,
+      textarea {
+        font-size: 16px !important
+      }
+
+      /* prevent zoom on iOS */
+      /* Grids */
+      .grid-4,
+      .grid-3 {
+        grid-template-columns: 1fr 1fr !important
+      }
+
+      /* Dashboard cards */
+      .stat-grid {
+        grid-template-columns: 1fr 1fr !important
+      }
+    }
+
+    @media(max-width:480px) {
+      .grid-4 {
+        grid-template-columns: 1fr 1fr !important
+      }
+
+      .grid-3,
+      .grid-2 {
+        grid-template-columns: 1fr !important
+      }
+
+      .stat-grid {
+        grid-template-columns: 1fr 1fr !important
+      }
+    }
+  </style>
 </head>
 
-<body><noscript>You need to enable JavaScript to run WorkSupport360.</noscript>
+<body>
+  <noscript>You need to enable JavaScript to run WorkSupport360.</noscript>
   <div id="root"></div>
 </body>
 

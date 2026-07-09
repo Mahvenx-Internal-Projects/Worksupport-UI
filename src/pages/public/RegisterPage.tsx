@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, User, Briefcase, Lock, Mail, Info, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { ENV } from '../../config/env';
 
 type Role = 'client' | 'freelancer';
 
@@ -180,7 +179,8 @@ const RegisterPage: React.FC = () => {
           if (token) {
             const fd = new FormData();
             fd.append('file', photoFile);
-            const uploadRes = await fetch(`${ENV.API_URL}/api/upload/profile-photo`, {
+            const apiBase = 'https://api.worksupport360.com/api';
+            const uploadRes = await fetch(`${apiBase}/upload/profile-photo`, {
               method: 'POST',
               headers: { 'Authorization': `Bearer ${token}` },
               body: fd,
@@ -206,12 +206,12 @@ const RegisterPage: React.FC = () => {
     /* ── STEP 0: Account ── */
     if(step===0) return(
       <div style={{ display:'flex',flexDirection:'column',gap:10 }}>
-        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
+        <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:10 }} className="reg-grid">
           <F label="Full name" value={form.name} onChange={v=>set('name',v)} placeholder="Rahul Sharma" icon={<User size={13}/>} required/>
           <F label="Mobile" value={form.mobile} onChange={v=>set('mobile',v)} placeholder="+91-9876543210" required/>
         </div>
         <F label="Email" type="email" value={form.email} onChange={v=>set('email',v)} placeholder="you@company.com" icon={<Mail size={13}/>} required/>
-        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
+        <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:10 }} className="reg-grid">
           <div style={{ position:'relative' }}>
             <F label="Password" type={showPass?'text':'password'} value={form.password} onChange={v=>set('password',v)} placeholder="Min 8 chars" icon={<Lock size={13}/>} required/>
             <button type="button" onClick={()=>setShowPass(!showPass)} style={{ position:'absolute',right:11,bottom:10,background:'none',border:'none',cursor:'pointer',color:'#94a3b8' }}>
@@ -231,7 +231,7 @@ const RegisterPage: React.FC = () => {
         <div style={{ background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:11,padding:'9px 13px',fontSize:12,color:'#1e40af',display:'flex',alignItems:'center',gap:7 }}>
           <Lock size={12}/> Your employer name is <strong>never shown</strong> to clients — only to admin.
         </div>
-        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
+        <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:10 }} className="reg-grid">
           <F label="Current job title" value={form.currentRole} onChange={v=>set('currentRole',v)} placeholder="Sr. Software Engineer" icon={<Briefcase size={13}/>} required/>
           <F label="Current company" value={form.currentCompany} onChange={v=>set('currentCompany',v)} placeholder="Infosys (private 🔒)" icon={<Lock size={13}/>} required hint="Never shown to clients"/>
         </div>
@@ -518,7 +518,7 @@ const RegisterPage: React.FC = () => {
         {addingProject?(
           <div style={{ background:'#f8fafc',border:'1.5px dashed #bfdbfe',borderRadius:14,padding:'14px 16px',display:'flex',flexDirection:'column',gap:10 }}>
             <div style={{ fontWeight:700,fontSize:12,color:'#1d4ed8',marginBottom:2 }}>New Project</div>
-            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
+            <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:10 }} className="reg-grid">
               <div>
                 <label style={{ fontSize:10,fontWeight:700,color:'#64748b',display:'block',marginBottom:4,textTransform:'uppercase' as const }}>Title *</label>
                 <input value={proj.title} onChange={e=>setProj(p=>({...p,title:e.target.value}))} placeholder="e.g. E-commerce Platform" style={{ ...inp,fontSize:12 }} onFocus={onF} onBlur={onB}/>
@@ -528,7 +528,7 @@ const RegisterPage: React.FC = () => {
                 <input value={proj.role} onChange={e=>setProj(p=>({...p,role:e.target.value}))} placeholder="e.g. Backend Developer" style={{ ...inp,fontSize:12 }} onFocus={onF} onBlur={onB}/>
               </div>
             </div>
-            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
+            <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:10 }} className="reg-grid">
               <div>
                 <label style={{ fontSize:10,fontWeight:700,color:'#64748b',display:'block',marginBottom:4,textTransform:'uppercase' as const }}>Client / Company <span style={{ fontWeight:400 }}>(optional 🔒)</span></label>
                 <input value={proj.company} onChange={e=>setProj(p=>({...p,company:e.target.value}))} placeholder="Optional — not shown publicly" style={{ ...inp,fontSize:12 }} onFocus={onF} onBlur={onB}/>
