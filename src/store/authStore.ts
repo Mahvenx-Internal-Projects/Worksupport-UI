@@ -31,7 +31,7 @@ const _initUser: AuthUser | null = (() => {
   try {
     const s = getStoredAuth() as Record<string, any>;
     if (s && s['accessToken'] && s['role'] && s['name'] && s['userId']) {
-      return { id: s['userId'], name: s['name'], role: s['role'] as UserRole, email: '', picture: s['picture'] || undefined } as AuthUser;
+      return { id: s['userId'], name: s['name'], role: (s['role'] as string).toLowerCase() as UserRole, email: '', picture: s['picture'] || undefined } as AuthUser;
     }
   } catch {}
   return null;
@@ -48,7 +48,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       const stored = getStoredAuth();
       if (stored.accessToken && stored.role && stored.name && stored.userId) {
         set({
-          user: { id: stored.userId, name: stored.name, role: stored.role as UserRole, email: '', picture: stored.picture || undefined },
+          user: { id: stored.userId, name: stored.name, role: (stored.role as string).toLowerCase() as UserRole, email: '', picture: stored.picture || undefined },
           isAuthenticated: true,
           isLoading: false,
         });
@@ -66,7 +66,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       const { data } = await authApi.login(email, password);
       storeAuth(data);
       set({
-        user: { id: data.userId, name: data.name, role: data.role as UserRole, email, picture: data.picture },
+        user: { id: data.userId, name: data.name, role: (data.role as string).toLowerCase() as UserRole, email, picture: data.picture },
         isAuthenticated: true,
       });
     } finally {
@@ -80,7 +80,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       const { data } = await authApi.googleSignIn(idToken);
       storeAuth(data);
       set({
-        user: { id: data.userId, name: data.name, role: data.role as UserRole, email: '', picture: data.picture },
+        user: { id: data.userId, name: data.name, role: (data.role as string).toLowerCase() as UserRole, email: '', picture: data.picture },
         isAuthenticated: true,
       });
       return { isNewUser: data.isNewUser };
@@ -95,7 +95,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       const { data } = await authApi.register(formData);
       storeAuth(data);
       set({
-        user: { id: data.userId, name: data.name, role: data.role as UserRole, email: formData.email },
+        user: { id: data.userId, name: data.name, role: (data.role as string).toLowerCase() as UserRole, email: formData.email },
         isAuthenticated: true,
       });
     } finally {

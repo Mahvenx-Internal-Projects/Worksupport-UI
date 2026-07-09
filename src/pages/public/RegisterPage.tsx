@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, User, Briefcase, Lock, Mail, Info, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { ENV } from '../../config/env';
 
 type Role = 'client' | 'freelancer';
 
@@ -141,6 +142,7 @@ const RegisterPage: React.FC = () => {
     if(!agreed){toast.error('Please agree to terms');return;}
     setLoading(true);
     try{
+      // Step 1: register user
       await register({
         // Core fields
         email:        form.email,
@@ -168,6 +170,28 @@ const RegisterPage: React.FC = () => {
         totalExp:           role==='freelancer' ? parseInt(form.totalExp||'0') : undefined,
         freelanceExp:       role==='freelancer' ? parseInt(form.freelanceExp||'0') : undefined,
       } as any);
+
+      // Step 2: upload profile photo to Cloudflare R2 if provided
+      // Wait a moment for token to be stored by authStore
+      if (photoFile && role === 'freelancer') {
+        try {
+          await new Promise(res => setTimeout(res, 500)); // ensure token stored
+          const token = localStorage.getItem('accessToken');
+          if (token) {
+            const fd = new FormData();
+            fd.append('file', photoFile);
+            const uploadRes = await fetch(`${ENV.API_URL}/api/upload/profile-photo`, {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${token}` },
+              body: fd,
+            });
+            const uploadData = await uploadRes.json();
+            if (uploadData.url) {
+              toast.success('Profile photo uploaded! 📸');
+            }
+          }
+        } catch { /* photo upload failure shouldn't block registration */ }
+      }
       navigate(`/login?registered=true&email=${encodeURIComponent(form.email)}&role=${role}`);
     }catch(err:any){ toast.error(err?.response?.data?.message||'Registration failed'); }
     finally{ setLoading(false); }
@@ -181,18 +205,22 @@ const RegisterPage: React.FC = () => {
 
     /* ── STEP 0: Account ── */
     if(step===0) return(
-      <div style={{ display:'flex',flexDirection:'column',gap:12 }}>
-        <F label="Full name" value={form.name} onChange={v=>set('name',v)} placeholder="e.g. Rahul Sharma" icon={<User size={13}/>} required/>
-        <F label="Mobile" value={form.mobile} onChange={v=>set('mobile',v)} placeholder="+91-9876543210" hint="Admin contacts you on this number" required/>
-        <F label="Email" type="email" value={form.email} onChange={v=>set('email',v)} placeholder="you@company.com" icon={<Mail size={13}/>} required/>
-        <div style={{ position:'relative' }}>
-          <F label="Password" type={showPass?'text':'password'} value={form.password} onChange={v=>set('password',v)} placeholder="Min 8 characters" icon={<Lock size={13}/>} required/>
-          <button type="button" onClick={()=>setShowPass(!showPass)} style={{ position:'absolute',right:11,bottom:10,background:'none',border:'none',cursor:'pointer',color:'#94a3b8' }}>
-            {showPass?<EyeOff size={14}/>:<Eye size={14}/>}
-          </button>
+      <div style={{ display:'flex',flexDirection:'column',gap:10 }}>
+        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
+          <F label="Full name" value={form.name} onChange={v=>set('name',v)} placeholder="Rahul Sharma" icon={<User size={13}/>} required/>
+          <F label="Mobile" value={form.mobile} onChange={v=>set('mobile',v)} placeholder="+91-9876543210" required/>
         </div>
-        <F label="Confirm password" type="password" value={form.confirmPassword} onChange={v=>set('confirmPassword',v)} placeholder="Repeat password"
-          error={form.confirmPassword&&form.password!==form.confirmPassword?"Passwords don't match":''}/>
+        <F label="Email" type="email" value={form.email} onChange={v=>set('email',v)} placeholder="you@company.com" icon={<Mail size={13}/>} required/>
+        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
+          <div style={{ position:'relative' }}>
+            <F label="Password" type={showPass?'text':'password'} value={form.password} onChange={v=>set('password',v)} placeholder="Min 8 chars" icon={<Lock size={13}/>} required/>
+            <button type="button" onClick={()=>setShowPass(!showPass)} style={{ position:'absolute',right:11,bottom:10,background:'none',border:'none',cursor:'pointer',color:'#94a3b8' }}>
+              {showPass?<EyeOff size={14}/>:<Eye size={14}/>}
+            </button>
+          </div>
+          <F label="Confirm password" type="password" value={form.confirmPassword} onChange={v=>set('confirmPassword',v)} placeholder="Repeat password"
+            error={form.confirmPassword&&form.password!==form.confirmPassword?"Passwords don't match":''}/>
+        </div>
       </div>
     );
 
@@ -459,7 +487,7 @@ const RegisterPage: React.FC = () => {
 
     /* ── STEP 5 Freelancer: Portfolio ── */
     if(step===5&&role==='freelancer') return(
-      <div style={{ display:'flex',flexDirection:'column',gap:14 }}>
+      <div style={{ display:'flex',flexDirection:'column',gap:10 }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between' }}>
           <div>
             <div style={{ fontSize:13,fontWeight:700,color:'#0f172a' }}>Past Projects <span style={{ fontSize:11,color:'#94a3b8',fontWeight:400 }}>(optional — builds client trust)</span></div>

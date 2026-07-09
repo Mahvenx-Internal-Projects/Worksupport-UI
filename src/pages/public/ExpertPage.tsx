@@ -22,18 +22,9 @@ const Stars = ({ r, s = 14 }: { r: number; s?: number }) => (
 
 const GRADS=['linear-gradient(135deg,#1e3a5f,#3b82f6)','linear-gradient(135deg,#7c3aed,#a855f7)','linear-gradient(135deg,#059669,#10b981)','linear-gradient(135deg,#0891b2,#06b6d4)','linear-gradient(135deg,#dc2626,#f87171)','linear-gradient(135deg,#d97706,#fbbf24)','linear-gradient(135deg,#be185d,#ec4899)'];
 
-const MOCK_PROJECTS=[
-  {title:'E-commerce Platform Rebuild',desc:'Migrated legacy PHP monolith to React + Node.js microservices. 3x performance improvement, 99.9% uptime post-launch.',tags:['React','Node.js','PostgreSQL'],duration:'6 weeks',outcome:'300% faster'},
-  {title:'Real-time Trading Dashboard',desc:'Built WebSocket-powered dashboard processing 10K events/sec with live chart updates and zero data loss.',tags:['React','WebSockets','Redis'],duration:'4 weeks',outcome:'<50ms latency'},
-  {title:'Cloud Infrastructure Migration',desc:'Migrated on-premise infra to AWS — zero downtime deployment, 40% cost reduction through right-sizing.',tags:['AWS','Terraform','Docker'],duration:'8 weeks',outcome:'40% cost saved'},
-  {title:'ML Pipeline for Fraud Detection',desc:'End-to-end ML pipeline detecting fraudulent transactions with 99.2% accuracy across 2M daily transactions.',tags:['Python','TensorFlow','Kafka'],duration:'10 weeks',outcome:'99.2% accuracy'},
-];
 
-const MOCK_REVIEWS=[
-  {text:'Exceptional engineer. Delivered exactly what we scoped, on time. Will hire again without hesitation.',author:'Priya M.',company:'Fintech startup',rating:5,date:'2 weeks ago'},
-  {text:'Fixed a production issue in 90 minutes that our team had been stuck on for 3 days. Brilliant.',author:'Rajan K.',company:'E-commerce platform',rating:5,date:'1 month ago'},
-  {text:'Deep expertise in cloud architecture. The infra he designed scaled to 10x traffic without issues.',author:'Anika S.',company:'SaaS company',rating:5,date:'6 weeks ago'},
-];
+
+
 
 const ExpertPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -79,14 +70,16 @@ const ExpertPage: React.FC = () => {
       const dt = `${hireForm.preferredDate}T${hireForm.preferredTime || '10:00'}:00`;
       await createReq.mutateAsync({
         freelancerId: id,
-        sessionType: hireForm.sessionType,
         preferredDateTime: new Date(dt).toISOString(),
         durationMinutes: parseInt(hireForm.hours) * 60,
         budgetMin: parseFloat(hireForm.bidRate || '0'),
         budgetMax: parseFloat(hireForm.bidRate || '0') * 1.2,
         budgetType: 'hourly',
         currency: hireForm.currency,
-        description: `${hireForm.problemDesc}\n\nTech stack: ${hireForm.techStack}\nExpected outcome: ${hireForm.expectedOutcome}\nAdditional info: ${hireForm.additionalInfo}`,
+        problemDescription: hireForm.problemDesc,
+        techStack: hireForm.techStack,
+        expectedOutcome: hireForm.expectedOutcome,
+        additionalInfo: hireForm.additionalInfo,
       });
       setSubmitted(true);
     } catch (err: any) {
@@ -123,7 +116,7 @@ const ExpertPage: React.FC = () => {
     </div>
   );
 
-  const name = expert.aliasName||expert.AliasName||expert.name||'Expert';
+  const name = expert.userName||expert.UserName||expert.user?.name||expert.user?.Name||expert.name||expert.Name||expert.fullName||expert.realName||expert.aliasName||'Expert';
   const role2 = expert.currentRole||expert.CurrentRole||'IT Professional';
   const rate = expert.hourlyRate||expert.HourlyRate||'—';
   const cur2 = (expert.currency||expert.Currency)==='INR'?'₹':'$';
@@ -135,6 +128,8 @@ const ExpertPage: React.FC = () => {
   const photo = expert.photoUrl||expert.PhotoUrl||null;
   const bio = expert.bioDescription||expert.bio||`Senior ${role2} with ${exp}+ years of enterprise experience. Available for hourly engagements.`;
   const avail = expert.isAvailable||expert.IsAvailable;
+  const portfolioProjects = (expert.portfolioProjects||[]) as any[];
+  const freelanceExp = expert.freelanceExp||expert.FreelanceExp||0;
   const grad = GRADS[(name.charCodeAt(0)||0)%GRADS.length];
 
   return (
@@ -198,15 +193,13 @@ const ExpertPage: React.FC = () => {
                 <span><Clock size={13} style={{ display:'inline', verticalAlign:'middle' }}/> Responds in ~25m</span>
               </div>
             </div>
-            {/* Rate card */}
+            {/* CTA — no price shown */}
             <div style={{ background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:20, padding:'20px 24px', textAlign:'center', marginBottom:24 }}>
-              <div style={{ fontSize:11, color:'rgba(255,255,255,0.45)', fontWeight:600, marginBottom:6, textTransform:'uppercase', letterSpacing:'0.06em' }}>Hourly Rate</div>
-              <div style={{ fontSize:36, fontWeight:900, color:'#fff', letterSpacing:'-0.04em', lineHeight:1 }}>{cur2}{rate}</div>
-              <div style={{ fontSize:12, color:'rgba(255,255,255,0.4)', marginBottom:16 }}>/hour · billed after session</div>
-              <button onClick={handleHireClick} style={{ width:'100%', padding:'12px', borderRadius:13, background:'linear-gradient(135deg,#2563eb,#3b82f6)', color:'#fff', border:'none', fontSize:14, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 16px rgba(59,130,246,0.4)' }}>
+              <div style={{ fontSize:13, color:'rgba(255,255,255,0.55)', marginBottom:6, lineHeight:1.6 }}>Admin matches & confirms<br/>within 4 hours</div>
+              <button onClick={handleHireClick} style={{ width:'100%', padding:'13px', borderRadius:13, background:'linear-gradient(135deg,#2563eb,#3b82f6)', color:'#fff', border:'none', fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 16px rgba(59,130,246,0.4)', marginBottom:10 }}>
                 Hire Now →
               </button>
-              <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)', marginTop:10 }}>No payment until you approve</div>
+              <div style={{ fontSize:11, color:'rgba(255,255,255,0.35)' }}>No payment until you approve</div>
             </div>
           </div>
           {/* Tabs */}
@@ -271,18 +264,29 @@ const ExpertPage: React.FC = () => {
                   <h3 style={{ fontWeight:800, fontSize:16, color:'#0f172a', margin:0 }}>Past Projects</h3>
                   <span style={{ fontSize:12, color:'#94a3b8' }}>Company names protected</span>
                 </div>
-                {MOCK_PROJECTS.map((p,i)=>(
-                  <div key={i} style={{ background:'#f8fafc', border:'1.5px solid #f1f5f9', borderRadius:16, padding:'18px', transition:'all .2s' }}
+                {portfolioProjects.length === 0 ? (
+                  <div style={{ textAlign:'center', padding:'40px 20px', background:'#f8fafc', borderRadius:16, border:'1.5px dashed #e2e8f0' }}>
+                    <div style={{ fontSize:40, marginBottom:10 }}>📂</div>
+                    <p style={{ color:'#94a3b8', fontSize:14 }}>No portfolio projects added yet</p>
+                  </div>
+                ) : portfolioProjects.map((p:any, i:number)=>(
+                  <div key={p.id||i} style={{ background:'#f8fafc', border:'1.5px solid #f1f5f9', borderRadius:16, padding:'18px', transition:'all .2s' }}
                     onMouseEnter={e=>{e.currentTarget.style.borderColor='#bfdbfe';e.currentTarget.style.background='#eff6ff';}}
                     onMouseLeave={e=>{e.currentTarget.style.borderColor='#f1f5f9';e.currentTarget.style.background='#f8fafc';}}>
                     <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:8, gap:12 }}>
                       <h4 style={{ fontWeight:800, fontSize:14, color:'#0f172a', margin:0 }}>{p.title}</h4>
-                      <span style={{ fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:8, background:'#dcfce7', color:'#15803d', flexShrink:0 }}>✓ {p.outcome}</span>
+                      <span style={{ fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:8, background:p.projectType==='freelance'?'#eff6ff':p.projectType==='personal'?'#f5f3ff':'#ecfdf5', color:p.projectType==='freelance'?'#1d4ed8':p.projectType==='personal'?'#7c3aed':'#059669', flexShrink:0, textTransform:'capitalize' as const }}>{p.projectType||'freelance'}</span>
                     </div>
-                    <p style={{ fontSize:13, color:'#475569', lineHeight:1.7, margin:'0 0 10px' }}>{p.desc}</p>
+                    <div style={{ fontSize:12, color:'#64748b', marginBottom:6 }}>{p.role}</div>
+                    {p.description&&<p style={{ fontSize:13, color:'#475569', lineHeight:1.7, margin:'0 0 10px' }}>{p.description}</p>}
+                    {p.outcome&&<div style={{ fontSize:12, color:'#059669', fontWeight:600, marginBottom:8 }}>✓ {p.outcome}</div>}
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
-                      <div style={{ display:'flex', gap:5 }}>{p.tags.map(t=><span key={t} style={{ fontSize:11, padding:'2px 8px', borderRadius:6, background:'#fff', border:'1px solid #e2e8f0', color:'#475569' }}>{t}</span>)}</div>
-                      <span style={{ fontSize:11, color:'#94a3b8' }}>⏱ {p.duration}</span>
+                      <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
+                        {(p.techStack||'').split(',').filter(Boolean).map((t:string)=>(
+                          <span key={t} style={{ fontSize:11, padding:'2px 8px', borderRadius:6, background:'#fff', border:'1px solid #e2e8f0', color:'#475569' }}>{t.trim()}</span>
+                        ))}
+                      </div>
+                      {p.liveUrl&&<a href={p.liveUrl} target="_blank" rel="noreferrer" style={{ fontSize:11, color:'#3b82f6' }}>🔗 View</a>}
                     </div>
                   </div>
                 ))}
@@ -309,17 +313,16 @@ const ExpertPage: React.FC = () => {
                     ))}
                   </div>
                 </div>
-                {MOCK_REVIEWS.map((r,i)=>(
+                {(!expert?.reviews || expert.reviews.length === 0) ? (
+                  <div style={{ textAlign:'center', padding:'32px', background:'#f8fafc', borderRadius:16, border:'1.5px dashed #e2e8f0' }}>
+                    <div style={{ fontSize:36, marginBottom:8 }}>⭐</div>
+                    <p style={{ color:'#94a3b8', fontSize:14 }}>No reviews yet — be the first to hire!</p>
+                  </div>
+                ) : (expert.reviews as any[]).map((r:any, i:number)=>(
                   <div key={i} style={{ background:'#f8fafc', border:'1.5px solid #f1f5f9', borderRadius:14, padding:'18px' }}>
                     <div style={{ display:'flex', gap:2, marginBottom:8 }}><Stars r={r.rating} s={13}/></div>
-                    <p style={{ fontSize:13, color:'#374151', lineHeight:1.75, margin:'0 0 12px', fontStyle:'italic' }}>"{r.text}"</p>
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                        <div style={{ width:32, height:32, borderRadius:9, background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:13, color:'#fff' }}>{r.author[0]}</div>
-                        <div><div style={{ fontWeight:700, fontSize:12, color:'#0f172a' }}>{r.author}</div><div style={{ fontSize:11, color:'#64748b' }}>{r.company}</div></div>
-                      </div>
-                      <span style={{ fontSize:11, color:'#94a3b8' }}>{r.date}</span>
-                    </div>
+                    <p style={{ fontSize:13, color:'#374151', lineHeight:1.75, margin:'0 0 12px', fontStyle:'italic' }}>"{r.comment}"</p>
+                    <span style={{ fontSize:11, color:'#94a3b8' }}>{r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) : ''}</span>
                   </div>
                 ))}
               </div>
@@ -338,7 +341,7 @@ const ExpertPage: React.FC = () => {
             </div>
             <div style={{ background:'#fff', borderRadius:20, padding:'18px', boxShadow:'0 4px 20px rgba(0,0,0,0.06)', border:'1px solid #f1f5f9' }}>
               <div style={{ fontWeight:700, fontSize:13, color:'#0f172a', marginBottom:12 }}>Expert details</div>
-              {[{l:'Response time',v:'~25 min'},{l:'Projects done',v:`${projects||24}+`},{l:'Repeat hire',v:'88%'},{l:'Languages',v:'English, Hindi'},{l:'Identity',v:'MNC-verified'},{l:'Experience',v:`${exp}+ years`}].map(item=>(
+              {[{l:'Projects done',v:projects>0?`${projects}+`:'—'},{l:'Languages',v:'English, Hindi'},{l:'Identity',v:'MNC-verified 🔒'},{l:'Experience',v:`${exp}+ years`},{l:'Freelance exp',v:`${freelanceExp||exp}+ years`}].map(item=>(
                 <div key={item.l} style={{ display:'flex', justifyContent:'space-between', padding:'8px 0', borderBottom:'1px solid #f8fafc', fontSize:12 }}>
                   <span style={{ color:'#64748b' }}>{item.l}</span>
                   <span style={{ fontWeight:600, color:'#0f172a' }}>{item.v}</span>
@@ -420,30 +423,18 @@ const ExpertPage: React.FC = () => {
               </div>
 
               <div style={{ background:'#fff', borderRadius:22, padding:'28px', boxShadow:'0 4px 24px rgba(0,0,0,0.07)', border:'1px solid #f1f5f9' }}>
-                <h2 style={{ fontWeight:900, fontSize:22, color:'#0f172a', margin:'0 0 4px', letterSpacing:'-0.03em' }}>Submit your hire request</h2>
-                <p style={{ fontSize:14, color:'#64748b', margin:'0 0 24px' }}>WorkSupport 360 admin will review and connect you with the expert within 4 hours.</p>
+                <h2 style={{ fontWeight:900, fontSize:22, color:'#0f172a', margin:'0 0 4px', letterSpacing:'-0.03em' }}>Hire {name.split(' ')[0]}</h2>
+                <p style={{ fontSize:14, color:'#64748b', margin:'0 0 24px' }}>Describe what you need — admin will contact the expert and schedule a session within 4 hours.</p>
 
                 <div style={{ display:'flex', flexDirection:'column', gap:18 }}>
-                  {/* What kind of help */}
-                  <div>
-                    <label style={{ fontSize:12, fontWeight:700, color:'#374151', display:'block', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.04em' }}>What kind of help do you need?</label>
-                    <p style={{ fontSize:12, color:'#94a3b8', margin:'0 0 10px' }}>Choose the type of session — admin will schedule it accordingly</p>
-                    <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                      {[
-                        {v:'consultation', e:'💬', l:'Ask & Advise', sub:'Talk through a problem, get expert advice, architecture review, or a second opinion on your approach.'},
-                        {v:'demo',         e:'🖥️', l:'Live Debug / Fix', sub:'Expert joins your screen via Zoom/Meet and fixes the issue live with you — ideal for production bugs.'},
-                        {v:'development',  e:'⚙️', l:'Build & Develop', sub:'Expert writes code, sets up infrastructure, or completes a defined task during the session.'},
-                      ].map(t=>(
-                        <button key={t.v} type="button" onClick={()=>setHireForm({...hireForm,sessionType:t.v})}
-                          style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'13px 14px', borderRadius:13, border:`1.5px solid ${hireForm.sessionType===t.v?'#3b82f6':'#e2e8f0'}`, background:hireForm.sessionType===t.v?'#eff6ff':'#fff', cursor:'pointer', transition:'all .18s', textAlign:'left' as const }}>
-                          <div style={{ fontSize:22, flexShrink:0, marginTop:1 }}>{t.e}</div>
-                          <div>
-                            <div style={{ fontWeight:700, fontSize:13, color:hireForm.sessionType===t.v?'#1d4ed8':'#0f172a', marginBottom:3 }}>{t.l}</div>
-                            <div style={{ fontSize:12, color:'#64748b', lineHeight:1.55 }}>{t.sub}</div>
-                          </div>
-                          {hireForm.sessionType===t.v && <div style={{ marginLeft:'auto', flexShrink:0, width:20, height:20, borderRadius:'50%', background:'#3b82f6', display:'flex', alignItems:'center', justifyContent:'center' }}><svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={3}><polyline points="20 6 9 17 4 12"/></svg></div>}
-                        </button>
-                      ))}
+                  {/* How it works info */}
+                  <div style={{ background:'linear-gradient(135deg,#eff6ff,#f5f3ff)', border:'1.5px solid #bfdbfe', borderRadius:14, padding:'14px 16px' }}>
+                    <div style={{ fontWeight:700, fontSize:13, color:'#1d4ed8', marginBottom:8 }}>📋 How this works</div>
+                    <div style={{ display:'flex', flexDirection:'column', gap:6, fontSize:13, color:'#374151' }}>
+                      <div>1️⃣ You submit this request with your requirement details</div>
+                      <div>2️⃣ Admin reviews and contacts <strong>{name}</strong> to confirm availability</div>
+                      <div>3️⃣ Admin schedules a session (call / screen share / dev work) and sends you a calendar invite</div>
+                      <div>4️⃣ You pay only after the session is completed and you approve</div>
                     </div>
                   </div>
 

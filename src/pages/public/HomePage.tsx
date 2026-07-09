@@ -10,6 +10,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useFeaturedFreelancers, usePublicRequirements } from '../../hooks/useApi';
 import SupportChatWidget from '../../components/SupportChatWidget';
 import { publicApi } from '../../services/endpoints';
+import { ENV } from '../../config/env';
 import toast from 'react-hot-toast';
 
 /* ── Design tokens ─────────────────────────────────────────────
@@ -83,7 +84,7 @@ const WSLogo: React.FC<{ size?: number; dark?: boolean }> = ({ size = 36, dark =
     width: size, height: size, borderRadius: Math.round(size * 0.28),
     background: dark ? '#fff' : 'linear-gradient(135deg,#1e3a5f 0%,#3b82f6 100%)',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    flexShrink: 0, boxShadow: dark ? 'none' : '0 4px 14px rgba(59,130,246,0.35)',
+    flexShrink: 0, boxShadow: dark ? 'none' : '0 4px 14px rgba(30,58,95,0.35)',
   }}>
     <span style={{
       fontWeight: 900, fontSize: Math.round(size * 0.35),
@@ -146,7 +147,7 @@ const PostRequirementForm: React.FC<{ onClose: () => void }> = ({ onClose }) => 
           </div>
         ))}
       </div>
-      <button onClick={onClose} style={{ padding:'12px 28px',borderRadius:13,background:'linear-gradient(135deg,#1e3a5f,#3b82f6)',color:'#fff',border:'none',fontSize:14,fontWeight:700,cursor:'pointer' }}>Done</button>
+      <button onClick={onClose} style={{ padding:'12px 28px',borderRadius:12,background:'linear-gradient(135deg,#1e3a5f,#3b82f6)',color:'#fff',border:'none',fontSize:14,fontWeight:700,cursor:'pointer' }}>Done</button>
     </div>
   );
 
@@ -283,11 +284,36 @@ export default function HomePage() {
   const [heroLocation, setHeroLocation] = useState('');
   const [jobSkillFilter, setJobSkillFilter] = useState('All');
   const [jobTypeFilter, setJobTypeFilter] = useState('All');
+
+// ── AI Chat Widget state ──────────────────────────────────────
+  const [chatOpen, setChatOpen] = useState(false);
+
+  // ── AI Requirement Expander state ────────────────────────────
+  const [expandInput, setExpandInput]   = useState('');
+  const [expandLoading, setExpandLoading] = useState(false);
+  const [expandResult, setExpandResult] = useState<any>(null);
+
+
+  const expandRequirement = async () => {
+    if (!expandInput.trim()) return;
+    setExpandLoading(true);
+    try {
+      const token = localStorage.getItem('accessToken');
+      const res = await fetch(`${ENV.API_URL}/api/ai/expand-requirement`, {
+        method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+        body: JSON.stringify({ description: expandInput })
+      });
+      const data = await res.json();
+      if (data.success) setExpandResult(data.requirement);
+      else toast.error('Could not expand requirement');
+    } catch { toast.error('AI service unavailable'); }
+    finally { setExpandLoading(false); }
+  };
   const { data: jobsData, isLoading: jobsLoading } = usePublicRequirements();
   const liveJobs: any[] = (jobsData as any)?.items ?? (Array.isArray(jobsData) ? jobsData as any[] : []);
   const [scrolled, setScrolled] = useState(false);
 
-  const userRole = (user?.role as string) || '';
+  const userRole = ((user?.role as string) || localStorage.getItem('userRole') || '').toLowerCase();
   const role = userRole;
   const dash = role==='admin'?'/admin':role==='freelancer'?'/freelancer':'/client';
 
@@ -298,7 +324,16 @@ export default function HomePage() {
   }, []);
 
   const { data: flData, isLoading: flLoading } = useFeaturedFreelancers({ page: 1, pageSize: 8 });
-  const freelancers: any[] = flData?.items ?? (Array.isArray(flData) ? flData : []);
+  const freelancers: any[] = flData?.items ?? flData?.data?.items ?? (Array.isArray(flData) ? flData : []);
+  const filteredFreelancers = heroSearch
+    ? freelancers.filter((f:any) => {
+        const s = heroSearch.toLowerCase();
+        const skills = Array.isArray(f.skills) ? f.skills.join(' ') : String(f.primarySkills||f.skills||'');
+        return (f.currentRole||f.CurrentRole||'').toLowerCase().includes(s)
+          || skills.toLowerCase().includes(s)
+          || (f.userName||f.name||'').toLowerCase().includes(s);
+      })
+    : freelancers;
   const totalPages = Math.ceil(freelancers.length / pageSize);
   const pgStart = page * pageSize;
 
@@ -393,20 +428,19 @@ export default function HomePage() {
 
           <div style={{ display:'flex', gap:10, alignItems:'center' }}>
             {isAuthenticated ? (<>
-              <button onClick={()=>{ if(!isAuthenticated){ navigate('/login?returnTo=/post-requirement'); return; } if(userRole==='freelancer'){ toast.error('Only clients can post requirements',{icon:'🚫'}); return; } navigate('/post-requirement'); }} style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 20px', borderRadius:10, background:'linear-gradient(135deg,#059669,#10b981)', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 3px 12px rgba(5,150,105,0.4)' }}>
+              {userRole !== 'freelancer' && (
+              <button onClick={()=>navigate('/post-requirement')} style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 20px', borderRadius:10, background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 3px 12px rgba(30,58,95,0.35)' }}>
                 📋 Post Requirement
               </button>
-              <button onClick={()=>navigate(dash)} style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 22px', borderRadius:10, background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:'#fff', border:'none', fontSize:14, fontWeight:700, cursor:'pointer', boxShadow:'0 3px 12px rgba(59,130,246,0.35)' }}>
+              )}
+              <button onClick={()=>{ const r=((user?.role as string)||localStorage.getItem('userRole')||'').toLowerCase(); navigate(r==='admin'?'/admin':r==='freelancer'?'/freelancer':'/client'); }} style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 22px', borderRadius:10, background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:'#fff', border:'none', fontSize:14, fontWeight:700, cursor:'pointer', boxShadow:'0 3px 12px rgba(30,58,95,0.35)' }}>
                 Dashboard →
               </button>
             </>) : (<>
-              <button onClick={()=>{ if(!isAuthenticated){ navigate('/login?returnTo=/post-requirement'); return; } if(userRole==='freelancer'){ toast.error('Only clients can post requirements',{icon:'🚫'}); return; } navigate('/post-requirement'); }} style={{ display:'flex', alignItems:'center', gap:7, padding:'9px 18px', borderRadius:10, background:'linear-gradient(135deg,#059669,#10b981)', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 3px 10px rgba(5,150,105,0.4)' }}>
-                📋 Post Requirement
-              </button>
-              <button onClick={()=>navigate('/login')} style={{ padding:'9px 18px', borderRadius:10, background:'#fff', color:'#374151', border:'1.5px solid #e2e8f0', fontSize:13, fontWeight:600, cursor:'pointer' }}>
+              <button onClick={()=>navigate('/login')} style={{ padding:'9px 18px', borderRadius:10, background:'transparent', color:'#1e3a5f', border:'1.5px solid #1e3a5f', fontSize:13, fontWeight:700, cursor:'pointer' }}>
                 Sign in
               </button>
-              <button onClick={()=>navigate('/register')} style={{ padding:'9px 20px', borderRadius:10, background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 3px 12px rgba(59,130,246,0.3)' }}>
+              <button onClick={()=>navigate('/register')} style={{ padding:'9px 20px', borderRadius:10, background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', boxShadow:'0 3px 12px rgba(30,58,95,0.35)' }}>
                 Get started →
               </button>
             </>)}
@@ -428,7 +462,7 @@ export default function HomePage() {
           @keyframes heroPulse{0%,100%{opacity:1}50%{opacity:.4}}
           @keyframes scrollUp{0%{transform:translateY(0)}100%{transform:translateY(-50%)}}
           @keyframes scrollDown{0%{transform:translateY(-50%)}100%{transform:translateY(0)}}
-          @keyframes wsGlow{0%,100%{box-shadow:0 0 20px rgba(59,130,246,0.4),0 0 40px rgba(59,130,246,0.1)}50%{box-shadow:0 0 40px rgba(59,130,246,0.7),0 0 80px rgba(59,130,246,0.2)}}
+          @keyframes wsGlow{0%,100%{box-shadow:0 0 20px rgba(30,58,95,0.4),0 0 40px rgba(59,130,246,0.1)}50%{box-shadow:0 0 40px rgba(59,130,246,0.7),0 0 80px rgba(59,130,246,0.2)}}
           @keyframes fadeSlideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:none}}
           @keyframes ticker{to{transform:translateX(-50%)}}
           @keyframes shimmer{0%{background-position:0% 50%}100%{background-position:200% 50%}}
@@ -447,14 +481,14 @@ export default function HomePage() {
           <div style={{ animation:'fadeSlideUp .6s ease both', marginBottom:40 }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:14 }}>
               <div style={{ height:1, flex:1, maxWidth:80, background:'rgba(255,255,255,0.1)' }}/>
-              <span style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.5)', letterSpacing:'0.1em', textTransform:'uppercase' }}>👨‍💻 IT Professionals — Find Freelance Work</span>
+              <span style={{ fontSize:12, fontWeight:700, color:'rgba(255,255,255,0.5)', letterSpacing:'0.1em', textTransform:'uppercase' }}>{(userRole||'').toLowerCase()==='freelancer'?'👨‍💻 Find Freelance IT Work':'🔍 Search IT Experts or Find Work'}</span>
               <div style={{ height:1, flex:1, maxWidth:80, background:'rgba(255,255,255,0.1)' }}/>
             </div>
             {/* Search pill */}
             <div style={{ maxWidth:820, margin:'0 auto', background:'rgba(255,255,255,0.97)', borderRadius:100, display:'flex', alignItems:'center', padding:'7px 7px 7px 22px', boxShadow:'0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1)', gap:0 }}>
               <Search size={17} color="#94a3b8" style={{ flexShrink:0 }}/>
               <input className="srch-inp" value={heroSearch} onChange={e=>setHeroSearch(e.target.value)}
-                onKeyDown={e=>e.key==='Enter'&&document.getElementById('jobs')?.scrollIntoView({behavior:'smooth'})}
+                onKeyDown={e=>{if(e.key==='Enter'){const t=(userRole||'').toLowerCase()==='freelancer'?'jobs':'experts';document.getElementById(t)?.scrollIntoView({behavior:'smooth'});}}}
                 placeholder="Enter skills / designation / technology…"
                 style={{ flex:1, border:'none', outline:'none', fontSize:15, color:'#0f172a', background:'transparent', fontFamily:'inherit', padding:'8px 14px' }}/>
               <div style={{ width:1, height:30, background:'#e2e8f0', margin:'0 4px', flexShrink:0 }}/>
@@ -471,17 +505,17 @@ export default function HomePage() {
                 <option value="Day">☀️ Day</option>
                 <option value="Monthly">📅 Monthly</option>
               </select>
-              <button onClick={()=>document.getElementById('jobs')?.scrollIntoView({behavior:'smooth'})}
-                style={{ flexShrink:0, padding:'12px 28px', borderRadius:100, background:'linear-gradient(135deg,#2563eb,#3b82f6)', color:'#fff', border:'none', fontSize:14, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 16px rgba(37,99,235,0.5)', whiteSpace:'nowrap', marginLeft:4 }}>
-                Find Work
+              <button onClick={()=>{const t=(userRole||'').toLowerCase()==='freelancer'?'jobs':'experts';document.getElementById(t)?.scrollIntoView({behavior:'smooth'});}}
+                style={{ flexShrink:0, padding:'12px 28px', borderRadius:100, background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:'#fff', border:'none', fontSize:14, fontWeight:700, cursor:'pointer', boxShadow:'0 4px 16px rgba(30,58,95,0.45)', whiteSpace:'nowrap', marginLeft:4 }}>
+                {(userRole||'').toLowerCase()==='freelancer' ? 'Find Work →' : 'Find Expert →'}
               </button>
             </div>
             {/* Popular tags */}
             <div style={{ display:'flex', gap:7, marginTop:13, flexWrap:'wrap', justifyContent:'center', alignItems:'center' }}>
               <span style={{ fontSize:11, color:'rgba(255,255,255,0.3)', fontWeight:600, marginRight:2 }}>Trending:</span>
               {['React.js','Node.js','AWS','DevOps','Python','Flutter','Java','.NET','Data Science','Kubernetes'].map(tag=>(
-                <button key={tag} className="tag-btn" onClick={()=>{setHeroSearch(tag);document.getElementById('jobs')?.scrollIntoView({behavior:'smooth'});}}
-                  style={{ padding:'4px 13px', borderRadius:100, background:heroSearch===tag?'rgba(59,130,246,0.35)':'rgba(255,255,255,0.07)', border:`1px solid ${heroSearch===tag?'rgba(59,130,246,0.7)':'rgba(255,255,255,0.12)'}`, color:heroSearch===tag?'#93c5fd':'rgba(255,255,255,0.6)', fontSize:11, fontWeight:600, cursor:'pointer', transition:'all .18s' }}>
+                <button key={tag} className="tag-btn" onClick={()=>{setHeroSearch(tag);const t=(userRole||'').toLowerCase()==='freelancer'?'jobs':'experts';document.getElementById(t)?.scrollIntoView({behavior:'smooth'});}}
+                  style={{ padding:'4px 13px', borderRadius:100, background:heroSearch===tag?'rgba(30,58,95,0.35)':'rgba(255,255,255,0.07)', border:`1px solid ${heroSearch===tag?'rgba(59,130,246,0.7)':'rgba(255,255,255,0.12)'}`, color:heroSearch===tag?'#93c5fd':'rgba(255,255,255,0.6)', fontSize:11, fontWeight:600, cursor:'pointer', transition:'all .18s' }}>
                   {tag}
                 </button>
               ))}
@@ -505,27 +539,29 @@ export default function HomePage() {
 
           {/* ── HEADLINE ── */}
           <div style={{ textAlign:'center', marginBottom:14, animation:'fadeSlideUp .7s .2s ease both' }}>
-            <h3 style={{ fontSize:'clamp(2.6rem,5vw,4.2rem)', fontWeight:900, color:'#fff', letterSpacing:'-0.05em', lineHeight:1.04, margin:'0 auto', maxWidth:860 }}>
+            <h1 style={{ fontSize:'clamp(2rem,3.5vw,3rem)', fontWeight:900, color:'#fff', letterSpacing:'-0.05em', lineHeight:1.04, margin:'0 auto', maxWidth:860 }}>
               Hire IT Experts &amp;{' '}
               <span style={{ background:'linear-gradient(90deg,#60a5fa 0%,#a78bfa 50%,#60a5fa 100%)', backgroundSize:'200%', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', animation:'shimmer 4s linear infinite' }}>
                 Find Freelance Work
               </span>
-            </h3>
+            </h1>
           </div>
-         
+          <p style={{ textAlign:'center', fontSize:20, color:'rgba(255,255,255,0.7)', lineHeight:1.75, maxWidth:580, margin:'0 auto 32px', animation:'fadeSlideUp .7s .25s ease both' }}>
+            Businesses hire verified MNC engineers by the hour. IT professionals earn on their free time. Identity safe. Admin coordinated.
+          </p>
 
           {/* ── 3 CTAs ── */}
           <div style={{ display:'flex', justifyContent:'center', gap:12, marginBottom:44, flexWrap:'wrap', animation:'fadeSlideUp .7s .3s ease both' }}>
             <button onClick={()=>document.getElementById('experts')?.scrollIntoView({behavior:'smooth'})}
-              style={{ display:'flex', alignItems:'center', gap:8, padding:'13px 28px', borderRadius:14, background:'linear-gradient(135deg,#2563eb,#3b82f6)', color:'#fff', border:'none', fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 6px 24px rgba(37,99,235,0.45)' }}>
+              style={{ display:'flex', alignItems:'center', gap:8, padding:'13px 28px', borderRadius:12, background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:'#fff', border:'none', fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 6px 24px rgba(30,58,95,0.4)' }}>
               🏢 Hire an Expert
             </button>
             <button onClick={()=>navigate('/post-requirement')}
-              style={{ display:'flex', alignItems:'center', gap:8, padding:'13px 28px', borderRadius:14, background:'linear-gradient(135deg,#059669,#10b981)', color:'#fff', border:'none', fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 6px 24px rgba(5,150,105,0.4)' }}>
+              style={{ display:'flex', alignItems:'center', gap:8, padding:'13px 28px', borderRadius:12, background:'linear-gradient(135deg,#059669,#10b981)', color:'#fff', border:'none', fontSize:15, fontWeight:700, cursor:'pointer', boxShadow:'0 6px 24px rgba(5,150,105,0.4)' }}>
               📋 Post Requirement
             </button>
             <button onClick={()=>document.getElementById('jobs')?.scrollIntoView({behavior:'smooth'})}
-              style={{ display:'flex', alignItems:'center', gap:8, padding:'13px 28px', borderRadius:14, background:'rgba(255,255,255,0.07)', color:'rgba(255,255,255,0.85)', border:'1.5px solid rgba(255,255,255,0.15)', fontSize:15, fontWeight:700, cursor:'pointer', backdropFilter:'blur(8px)' }}>
+              style={{ display:'flex', alignItems:'center', gap:8, padding:'13px 28px', borderRadius:12, background:'rgba(255,255,255,0.08)', color:'rgba(255,255,255,0.9)', border:'1.5px solid rgba(255,255,255,0.2)', fontSize:15, fontWeight:700, cursor:'pointer' }}>
               👨‍💻 Find IT Work
             </button>
           </div>
@@ -566,7 +602,7 @@ export default function HomePage() {
 
             {/* Center WS */}
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', position:'relative', zIndex:5 }}>
-              <div style={{ width:2, flex:1, background:'linear-gradient(to bottom,transparent,rgba(59,130,246,0.4),transparent)' }}/>
+              <div style={{ width:2, flex:1, background:'linear-gradient(to bottom,transparent,rgba(30,58,95,0.4),transparent)' }}/>
               <div style={{ width:38, height:38, borderRadius:'50%', background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:900, fontSize:10, color:'#fff', flexShrink:0, animation:'wsGlow 3s ease infinite', border:'1.5px solid rgba(59,130,246,0.5)', letterSpacing:'0.02em' }}>WS</div>
               <div style={{ width:2, flex:1, background:'linear-gradient(to bottom,transparent,rgba(124,58,237,0.4),transparent)' }}/>
             </div>
@@ -641,7 +677,12 @@ export default function HomePage() {
           <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', marginBottom:24, flexWrap:'wrap', gap:12 }}>
             <div>
               <p style={{ margin:'0 0 4px', fontSize:12, fontWeight:700, color:'#3b82f6', letterSpacing:'0.08em', textTransform:'uppercase' }}>Available now</p>
-              <h2 style={{ margin:0, fontSize:28, fontWeight:900, color:'#0f172a', letterSpacing:'-0.04em' }}>Verified IT Experts</h2>
+              <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+              <h2 style={{ margin:0, fontSize:28, fontWeight:900, color:'#0f172a', letterSpacing:'-0.04em' }}>
+                {heroSearch ? `Experts — "${heroSearch}"` : 'Verified IT Experts'}
+              </h2>
+              {heroSearch && <button onClick={()=>setHeroSearch('')} style={{ padding:'5px 12px', borderRadius:100, background:'#f1f5f9', border:'1.5px solid #e2e8f0', fontSize:12, fontWeight:600, color:'#64748b', cursor:'pointer' }}>✕ Clear</button>}
+            </div>
             </div>
             <p style={{ margin:0, fontSize:13, color:'#64748b' }}>Click any card to view full profile</p>
           </div>
@@ -652,7 +693,7 @@ export default function HomePage() {
                 <div key={i} style={{ background:'#fff', borderRadius:16, height:180, border:'1.5px solid #f1f5f9', backgroundImage:'linear-gradient(90deg,#f8fafc 25%,#f1f5f9 50%,#f8fafc 75%)', backgroundSize:'400% 100%', animation:'shimmer 1.4s linear infinite' }}/>
               ))}
             </div>
-          ) : freelancers.length===0 ? (
+          ) : filteredFreelancers.length===0 ? (
             <div style={{ textAlign:'center', padding:'48px', background:'#fff', borderRadius:20, border:'1.5px solid #f1f5f9' }}>
               <div style={{ fontSize:48, marginBottom:12 }}>👨‍💻</div>
               <p style={{ fontWeight:700, fontSize:16, color:'#374151', marginBottom:8 }}>Verified experts joining soon</p>
@@ -662,7 +703,7 @@ export default function HomePage() {
             <div style={{ display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:14 }}>
               {(freelancers as any[]).slice(pgStart, pgStart+pageSize).map((f:any,i:number)=>{
                 const grads=['linear-gradient(135deg,#1e3a5f,#3b82f6)','linear-gradient(135deg,#7c3aed,#a855f7)','linear-gradient(135deg,#059669,#10b981)','linear-gradient(135deg,#0891b2,#06b6d4)','linear-gradient(135deg,#1d4ed8,#6366f1)','linear-gradient(135deg,#15803d,#059669)','linear-gradient(135deg,#be185d,#ec4899)','linear-gradient(135deg,#b45309,#f59e0b)'];
-                const name=f.aliasName||f.AliasName||f.name||'Expert';
+                const name=f.userName||f.UserName||f.name||f.Name||'Expert';
                 const role2=f.currentRole||f.CurrentRole||'IT Professional';
                 const rate=f.hourlyRate||f.HourlyRate||'—';
                 const cur=(f.currency||f.Currency)==='INR'?'₹':'$';
@@ -670,7 +711,7 @@ export default function HomePage() {
                 const projects=f.completedProjects||f.CompletedProjects||0;
                 const skills=(f.primarySkills||f.skills||f.Skills||[]);
                 const skillArr=Array.isArray(skills)?skills.slice(0,3):String(skills).split(',').map((s:string)=>s.trim()).slice(0,3);
-                const photo=f.photoUrl||f.PhotoUrl||null;
+                const photo = f.photoUrl || f.PhotoUrl || f.photo || f.Photo || null;
                 const avail=f.isAvailable||f.IsAvailable;
                 const grad=grads[(name.charCodeAt(0)||0)%grads.length];
                 return (
@@ -686,7 +727,18 @@ export default function HomePage() {
                       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:10 }}>
                         <div style={{ position:'relative' }}>
                           {photo
-                            ? <img src={photo} alt={name} style={{ width:44, height:44, borderRadius:12, objectFit:'cover' }} onError={e=>{(e.target as HTMLImageElement).style.display='none';}}/>
+                            ? <img src={photo} alt={name} style={{ width:44, height:44, borderRadius:12, objectFit:'cover' }}
+                onError={e=>{
+                  const el = e.target as HTMLImageElement;
+                  el.style.display='none';
+                  const parent = el.parentElement;
+                  if(parent){
+                    const div = document.createElement('div');
+                    div.style.cssText=`width:44px;height:44px;border-radius:12px;background:${grad};display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;color:#fff`;
+                    div.textContent=name[0]?.toUpperCase()||'E';
+                    parent.appendChild(div);
+                  }
+                }}/>
                             : <div style={{ width:44, height:44, borderRadius:12, background:grad, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:900, fontSize:18, color:'#fff' }}>{name[0]?.toUpperCase()}</div>
                           }
                           {avail&&<div style={{ position:'absolute', bottom:-2, right:-2, width:11, height:11, borderRadius:'50%', background:'#22c55e', border:'2px solid #fff' }}/>}
@@ -739,7 +791,7 @@ export default function HomePage() {
               </div>
             )}
             <p style={{ textAlign:'center', marginTop:12, fontSize:12, color:'#94a3b8' }}>
-              Showing {pgStart+1}–{Math.min(pgStart+pageSize, freelancers.length)} of {freelancers.length} experts · Click any card to view full profile
+              Showing {pgStart+1}–{Math.min(pgStart+pageSize, filteredFreelancers.length)} of {filteredFreelancers.length} experts · Click any card to view full profile
             </p>
           </>)}
 
@@ -786,7 +838,7 @@ export default function HomePage() {
               <h2 style={{ margin:'0 0 4px', fontSize:26, fontWeight:900, color:'#0f172a', letterSpacing:'-0.04em' }}>Freelance IT Work</h2>
               <p style={{ margin:0, fontSize:13, color:'#64748b' }}>Admin-approved client requirements · freelancers only can apply</p>
             </div>
-            <button onClick={()=>navigate('/register?role=freelancer')} style={{ padding:'9px 20px', borderRadius:11, background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+            <button onClick={()=>navigate('/register?role=freelancer')} style={{ padding:'9px 20px', borderRadius:12, background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer' }}>
               Register to Apply →
             </button>
           </div>
@@ -851,7 +903,7 @@ export default function HomePage() {
               <div style={{ fontWeight:700, fontSize:14, color:'#0f172a', marginBottom:3 }}>More jobs posted every day</div>
               <div style={{ fontSize:13, color:'#64748b' }}>Register as a freelancer to see all requirements and get notified via WhatsApp.</div>
             </div>
-            <button onClick={()=>navigate('/register?role=freelancer')} style={{ padding:'10px 20px', borderRadius:11, background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
+            <button onClick={()=>navigate('/register?role=freelancer')} style={{ padding:'10px 20px', borderRadius:12, background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:'#fff', border:'none', fontSize:13, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
               Join Now →
             </button>
           </div>
@@ -880,18 +932,136 @@ export default function HomePage() {
         </div>
       </section>
 
+
+      {/* ══ AI FEATURES ══ */}
+      <section style={{ padding:'80px 40px', background:'linear-gradient(180deg,#fff 0%,#f8fafc 100%)' }}>
+        <div style={{ maxWidth:1100, margin:'0 auto' }}>
+          {/* Header */}
+          <div style={{ textAlign:'center', marginBottom:52 }}>
+            <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'5px 16px', borderRadius:100, background:'linear-gradient(135deg,#eff6ff,#f5f3ff)', border:'1px solid #bfdbfe', marginBottom:14 }}>
+              <span style={{ fontSize:16 }}>🤖</span>
+              <span style={{ fontSize:12, fontWeight:700, color:'#1d4ed8', letterSpacing:'0.06em' }}>AI-POWERED PLATFORM</span>
+            </div>
+            <h2 style={{ fontSize:'clamp(1.8rem,3vw,2.6rem)', fontWeight:900, color:'#0f172a', letterSpacing:'-0.04em', margin:'0 0 12px' }}>
+              Intelligence Built Into Every Step
+            </h2>
+            <p style={{ fontSize:16, color:'#64748b', maxWidth:520, margin:'0 auto', lineHeight:1.75 }}>
+              AI assists clients, freelancers, and admins — making every interaction smarter, faster, and more accurate.
+            </p>
+          </div>
+
+          {/* 5 AI feature cards */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))', gap:20, marginBottom:52 }}>
+            {[
+              {
+                icon:'💬', color:'#2563eb', bg:'#eff6ff', border:'#bfdbfe',
+                title:'AI Support Chat',
+                desc:'Get instant answers 24/7. Ask about pricing, how the platform works, or get help posting requirements. Handles 80% of questions without admin.',
+                tag:'Live below ↓', role:'Everyone'
+              },
+              {
+                icon:'✍️', color:'#059669', bg:'#ecfdf5', border:'#86efac',
+                title:'Smart Requirement Writer',
+                desc:'Type a rough description — AI expands it into a full structured requirement with skills, budget, JD, and timeline. Perfect requirements every time.',
+                tag:'For Clients', role:'Clients'
+              },
+              {
+                icon:'🎯', color:'#7c3aed', bg:'#f5f3ff', border:'#c4b5fd',
+                title:'Expert Matching Engine',
+                desc:'AI reads requirements and scores all available freelancers by skill match, experience, rate fit, and rating — admin just confirms the top match.',
+                tag:'Admin Tool', role:'Admin'
+              },
+              {
+                icon:'📈', color:'#d97706', bg:'#fffbeb', border:'#fde68a',
+                title:'Profile Optimizer',
+                desc:'AI reviews your freelancer profile and suggests better bio, missing skills, optimal rate based on market data, and profile tips to get more matches.',
+                tag:'For Freelancers', role:'Freelancers'
+              },
+              {
+                icon:'📊', color:'#dc2626', bg:'#fef2f2', border:'#fca5a5',
+                title:'Admin Intelligence',
+                desc:'Daily AI summaries highlight pending actions, platform health, revenue trends, and bottlenecks. Admin sees insights instead of raw numbers.',
+                tag:'Admin Dashboard', role:'Admin'
+              },
+            ].map(f=>(
+              <div key={f.title} style={{ background:'#fff', border:`1.5px solid ${f.border}`, borderRadius:20, padding:'24px', boxShadow:'0 4px 16px rgba(0,0,0,0.04)', transition:'transform .2s, box-shadow .2s' }}
+                onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-4px)';e.currentTarget.style.boxShadow='0 12px 32px rgba(0,0,0,0.1)';}}
+                onMouseLeave={e=>{e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.04)';}}>
+                <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:12 }}>
+                  <div style={{ width:44, height:44, borderRadius:13, background:f.bg, display:'flex', alignItems:'center', justifyContent:'center', fontSize:22 }}>{f.icon}</div>
+                  <span style={{ fontSize:11, fontWeight:700, padding:'3px 10px', borderRadius:100, background:f.bg, color:f.color, border:`1px solid ${f.border}` }}>{f.tag}</span>
+                </div>
+                <h3 style={{ fontWeight:800, fontSize:17, color:'#0f172a', margin:'0 0 8px' }}>{f.title}</h3>
+                <p style={{ fontSize:13, color:'#64748b', lineHeight:1.7, margin:0 }}>{f.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* AI Requirement Expander — demo */}
+          {isAuthenticated && (userRole === 'client' || userRole === 'admin') && (
+            <div style={{ background:'linear-gradient(135deg,#0f172a,#1e3a5f)', borderRadius:24, padding:'36px 40px', color:'#fff' }}>
+              <div style={{ display:'flex', alignItems:'flex-start', gap:16, marginBottom:24 }}>
+                <div style={{ width:48, height:48, borderRadius:14, background:'rgba(59,130,246,0.2)', border:'1px solid rgba(30,58,95,0.35)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:24, flexShrink:0 }}>✍️</div>
+                <div>
+                  <h3 style={{ fontWeight:900, fontSize:20, margin:'0 0 4px', letterSpacing:'-0.02em' }}>AI Requirement Writer</h3>
+                  <p style={{ color:'rgba(255,255,255,0.55)', fontSize:14, margin:0 }}>Describe what you need in plain language — AI builds the full requirement</p>
+                </div>
+              </div>
+              <textarea value={expandInput} onChange={e=>setExpandInput(e.target.value)}
+                placeholder='e.g. "I need a React developer to fix a production bug in my dashboard app, urgent, 1 day, around 8 hours"'
+                style={{ width:'100%', background:'rgba(255,255,255,0.07)', border:'1.5px solid rgba(255,255,255,0.15)', borderRadius:14, padding:'14px 16px', color:'#fff', fontSize:14, lineHeight:1.7, resize:'none', outline:'none', fontFamily:'inherit', boxSizing:'border-box' as const, minHeight:80 }}/>
+              <div style={{ display:'flex', alignItems:'center', gap:12, marginTop:12 }}>
+                <button onClick={expandRequirement} disabled={!expandInput.trim() || expandLoading}
+                  style={{ display:'flex', alignItems:'center', gap:8, padding:'12px 24px', borderRadius:12, background:expandLoading?'#374151':'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:'#fff', border:'none', fontSize:14, fontWeight:700, cursor:'pointer', opacity: !expandInput.trim() ? 0.5 : 1 }}>
+                  {expandLoading ? <><span style={{ animation:'spin 1s linear infinite', display:'inline-block' }}>⏳</span> Expanding…</> : '✨ Expand with AI →'}
+                </button>
+                <span style={{ fontSize:12, color:'rgba(255,255,255,0.35)' }}>Takes ~3 seconds</span>
+              </div>
+              {expandResult && (
+                <div style={{ marginTop:20, background:'rgba(255,255,255,0.06)', borderRadius:16, padding:'20px', border:'1px solid rgba(255,255,255,0.1)' }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:'#34d399', marginBottom:12, letterSpacing:'0.06em' }}>✅ AI-GENERATED REQUIREMENT</div>
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:10 }}>
+                    {[
+                      ['Title', expandResult.title],
+                      ['Skills', expandResult.skillsRequired],
+                      ['Hours', expandResult.hoursPerEngagement+'hrs'],
+                      ['Budget', `${expandResult.currency}${expandResult.budgetMin}–${expandResult.currency}${expandResult.budgetMax}/hr`],
+                      ['Mode', expandResult.workMode],
+                      ['Urgency', expandResult.urgency],
+                    ].map(([l,v])=>(
+                      <div key={l} style={{ background:'rgba(255,255,255,0.05)', borderRadius:10, padding:'10px 12px' }}>
+                        <div style={{ fontSize:10, color:'rgba(255,255,255,0.4)', marginBottom:3, textTransform:'uppercase' as const, letterSpacing:'0.06em' }}>{l}</div>
+                        <div style={{ fontSize:13, color:'#f1f5f9', fontWeight:600 }}>{v}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {expandResult.description && <p style={{ fontSize:13, color:'rgba(255,255,255,0.6)', lineHeight:1.7, marginTop:12 }}>{expandResult.description}</p>}
+                  <button onClick={()=>{ navigate('/post-requirement'); }}
+                    style={{ marginTop:14, padding:'11px 24px', borderRadius:12, background:'linear-gradient(135deg,#059669,#10b981)', color:'#fff', border:'none', fontSize:14, fontWeight:700, cursor:'pointer' }}>
+                    Post This Requirement →
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* ══ CONTACT FORM ══ */}
       <section id="contact" style={{ padding:'80px 40px', background:'#fff' }}>
         <div style={{ maxWidth:720, margin:'0 auto' }}>
           <div style={{ textAlign:'center', marginBottom:40 }}>
-            <p style={{ margin:'0 0 8px', fontSize:12, fontWeight:700, color:'#3b82f6', letterSpacing:'0.08em', textTransform:'uppercase' }}>Get started in 2 minutes</p>
-            <h2 style={{ margin:'0 0 8px', fontSize:34, fontWeight:900, color:'#0f172a', letterSpacing:'-0.04em' }}>Post Your IT Requirement</h2>
-            <p style={{ margin:0, fontSize:15, color:'#64748b' }}>We match you with a verified MNC engineer</p>
+            <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'5px 16px', borderRadius:100, background:'#fef2f2', border:'1px solid #fca5a5', marginBottom:14 }}>
+              <span style={{ fontSize:14 }}>📞</span>
+              <span style={{ fontSize:12, fontWeight:700, color:'#dc2626', letterSpacing:'0.06em', textTransform:'uppercase' as const }}>Contact Us</span>
+            </div>
+            <h2 style={{ margin:'0 0 8px', fontSize:34, fontWeight:900, color:'#0f172a', letterSpacing:'-0.04em' }}>Get in Touch</h2>
+            <p style={{ margin:0, fontSize:15, color:'#64748b' }}>Tell us your requirement — we'll match you with the right expert</p>
           </div>
 
           {submitted ? (
             <div style={{ background:'linear-gradient(135deg,#eff6ff,#f0fdf4)', border:'2px solid #bfdbfe', borderRadius:24, padding:'52px', textAlign:'center' }}>
-              <div style={{ width:72, height:72, borderRadius:'50%', background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 18px', fontSize:32, boxShadow:'0 6px 20px rgba(59,130,246,0.35)' }}>✓</div>
+              <div style={{ width:72, height:72, borderRadius:'50%', background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 18px', fontSize:32, boxShadow:'0 6px 20px rgba(30,58,95,0.35)' }}>✓</div>
               <h3 style={{ fontWeight:900, fontSize:22, color:'#0f172a', margin:'0 0 10px' }}>Requirement received!</h3>
               <p style={{ fontSize:15, color:'#475569', lineHeight:1.7, margin:0 }}>Our admin team will match you with a verified engineer and contact you promptly on WhatsApp or mobile.</p>
             </div>
@@ -911,7 +1081,7 @@ export default function HomePage() {
                 <label style={{ fontSize:12, fontWeight:700, color:'#374151', display:'block', marginBottom:7, textTransform:'uppercase', letterSpacing:'0.04em' }}>Mobile / WhatsApp *</label>
                 <div style={{ display:'flex', gap:8 }}>
                   <select value={form.countryCode||'+91'} onChange={e=>setForm({...form,countryCode:e.target.value})}
-                    style={{ width:110, padding:'10px 8px', border:'1.5px solid #e2e8f0', borderRadius:11, fontSize:13, outline:'none', fontFamily:'inherit', background:'#fff', cursor:'pointer' }}
+                    style={{ width:110, padding:'10px 8px', border:'1.5px solid #e2e8f0', borderRadius:12, fontSize:13, outline:'none', fontFamily:'inherit', background:'#fff', cursor:'pointer' }}
                     onFocus={onF} onBlur={onB}>
                     {[{c:'+91',l:'🇮🇳 +91'},{c:'+1',l:'🇺🇸 +1'},{c:'+44',l:'🇬🇧 +44'},{c:'+65',l:'🇸🇬 +65'},{c:'+971',l:'🇦🇪 +971'},{c:'+61',l:'🇦🇺 +61'},{c:'+49',l:'🇩🇪 +49'},{c:'+33',l:'🇫🇷 +33'}].map(x=>(
                       <option key={x.c} value={x.c}>{x.l}</option>
@@ -948,8 +1118,8 @@ export default function HomePage() {
                   style={{ ...inp, resize:'none', lineHeight:1.65 }} onFocus={onF} onBlur={onB}/>
               </div>
               <button type="submit" disabled={submitting}
-                style={{ padding:'15px', borderRadius:14, background:submitting?'#f1f5f9':'linear-gradient(135deg,#1e3a5f,#3b82f6)', color:submitting?'#94a3b8':'#fff', border:'none', fontSize:15, fontWeight:700, cursor:submitting?'not-allowed':'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, boxShadow:submitting?'none':'0 6px 20px rgba(59,130,246,0.35)' }}>
-                <Send size={16}/> {submitting?'Sending…':'Submit Requirement'}
+                style={{ padding:'15px', borderRadius:14, background:submitting?'#f1f5f9':'linear-gradient(135deg,#dc2626,#ef4444)', color:submitting?'#94a3b8':'#fff', border:'none', fontSize:15, fontWeight:700, cursor:submitting?'not-allowed':'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, boxShadow:submitting?'none':'0 6px 20px rgba(220,38,38,0.35)' }}>
+                <Send size={16}/> {submitting?'Sending…':'Send Message 📞'}
               </button>
             </form>
           )}
@@ -1036,7 +1206,7 @@ export default function HomePage() {
           </div>
 
           <div style={{ borderTop:'1px solid rgba(255,255,255,0.07)', paddingTop:24, display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:12 }}>
-            <p style={{ margin:0, fontSize:12, color:'rgba(255,255,255,0.22)' }}>© 2025 Mahvenx IT Solutions Pvt. Ltd. All rights reserved.</p>
+            <p style={{ margin:0, fontSize:12, color:'rgba(255,255,255,0.3)' }}>© 2025 Mahvenx IT Solutions Pvt. Ltd. All rights reserved.</p>
             <div style={{ display:'flex', gap:6 }}>
               {COMPANIES.slice(0,6).map(c=>(
                 <span key={c} style={{ fontSize:10, padding:'3px 8px', borderRadius:6, background:'rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.2)', fontWeight:600 }}>{c}</span>
@@ -1046,8 +1216,70 @@ export default function HomePage() {
         </div>
       </footer>
 
-      {/* Support chat widget — visible on homepage too */}
-      <SupportChatWidget/>
+
+
+      {/* ══ SUPPORT CHAT WIDGET (WhatsApp) ══ */}
+      <style>{`
+        @keyframes chatPop{from{opacity:0;transform:scale(.9) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+        .chat-scroll::-webkit-scrollbar{width:4px}.chat-scroll::-webkit-scrollbar-thumb{background:#e2e8f0;border-radius:4px}
+      `}</style>
+
+      <button onClick={()=>setChatOpen(o=>!o)}
+        style={{ position:'fixed', bottom:24, right:24, width:58, height:58, borderRadius:'50%', background:'linear-gradient(135deg,#25d366,#128c7e)', color:'#fff', border:'none', fontSize:26, cursor:'pointer', boxShadow:'0 6px 24px rgba(37,211,102,0.5)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', transition:'transform .2s' }}
+        onMouseEnter={e=>e.currentTarget.style.transform='scale(1.1)'}
+        onMouseLeave={e=>e.currentTarget.style.transform='scale(1)'}>
+        {chatOpen ? '✕' : '💬'}
+      </button>
+
+      {!chatOpen && <div style={{ position:'fixed', bottom:70, right:20, background:'#ef4444', color:'#fff', fontSize:9, fontWeight:800, width:18, height:18, borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1001 }}>1</div>}
+
+      {chatOpen && (
+        <div style={{ position:'fixed', bottom:94, right:24, width:320, borderRadius:20, background:'#fff', boxShadow:'0 24px 64px rgba(0,0,0,0.18)', zIndex:999, animation:'chatPop .25s ease', overflow:'hidden', border:'1px solid #e2e8f0' }}>
+          {/* Header */}
+          <div style={{ background:'linear-gradient(135deg,#25d366,#128c7e)', padding:'16px 20px', display:'flex', alignItems:'center', gap:12 }}>
+            <div style={{ width:38, height:38, borderRadius:'50%', background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20 }}>💬</div>
+            <div>
+              <div style={{ fontWeight:800, color:'#fff', fontSize:14 }}>WorkSupport360</div>
+              <div style={{ fontSize:11, color:'rgba(255,255,255,0.75)' }}>Typically replies instantly</div>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div style={{ padding:'20px', background:'#f0f4f8' }}>
+            <div style={{ background:'#fff', borderRadius:'12px 12px 12px 0', padding:'12px 14px', fontSize:13, color:'#374151', lineHeight:1.65, boxShadow:'0 1px 4px rgba(0,0,0,0.08)', marginBottom:16 }}>
+              👋 Hi! Welcome to <strong>WorkSupport360</strong>.<br/><br/>
+              Need to hire an IT expert or find freelance work? We're here to help!<br/><br/>
+              Click below to chat with us on WhatsApp or contact us directly.
+            </div>
+
+            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+              <a href="https://wa.me/919441363687?text=Hi%20WorkSupport360%2C%20I%20need%20help%20with%20IT%20support"
+                target="_blank" rel="noreferrer"
+                style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 16px', background:'#25d366', borderRadius:12, textDecoration:'none', color:'#fff', fontWeight:700, fontSize:13 }}>
+                <span style={{ fontSize:20 }}>💬</span>
+                Chat on WhatsApp
+              </a>
+
+              <button onClick={()=>{ setChatOpen(false); navigate('/post-requirement'); }}
+                style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 16px', background:'linear-gradient(135deg,#1e3a5f,#3b82f6)', borderRadius:12, color:'#fff', fontWeight:700, fontSize:13, border:'none', cursor:'pointer' }}>
+                <span style={{ fontSize:20 }}>📋</span>
+                Post a Requirement
+              </button>
+
+              <a href="mailto:help@worksupport360.com"
+                style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 16px', background:'#f8fafc', borderRadius:12, textDecoration:'none', color:'#374151', fontWeight:600, fontSize:13, border:'1.5px solid #e2e8f0' }}>
+                <span style={{ fontSize:20 }}>📧</span>
+                help@worksupport360.com
+              </a>
+            </div>
+          </div>
+
+          {/* <div style={{ padding:'10px 20px', textAlign:'center', fontSize:11, color:'#94a3b8', borderTop:'1px solid #f1f5f9' }}>
+            +91-9441363687 · Mon–Sat 9AM–8PM IST
+          </div> */}
+        </div>
+      )}
+
     </div>
   );
 }

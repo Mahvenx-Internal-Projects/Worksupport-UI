@@ -11,13 +11,14 @@ const adminNav: NavItem[] = [
   { label: 'Home',        path: '/',                  emoji: '🏠' },
   { label: 'Dashboard',   path: '/admin',              emoji: '📊' },
   { label: 'Requirements',  path: '/admin/requirements', emoji: '📋' },
+  { label: 'Approvals',      path: '/admin/freelancers',  emoji: '✅' },
   { label: 'Requests',    path: '/admin/requests',     emoji: '📥' },
   { label: 'Meetings',    path: '/admin/meetings',     emoji: '📅' },
   { label: 'Projects',    path: '/admin/projects',     emoji: '📁' },
   { label: 'Timesheets',  path: '/admin/timesheets',   emoji: '⏱️' },
   { label: 'Invoices',    path: '/admin/invoices',     emoji: '🧾' },
   { label: 'Payments',    path: '/admin/payments',     emoji: '💳' },
-  { label: 'Freelancers', path: '/admin/freelancers',  emoji: '👥' },
+
   { label: 'Clients',     path: '/admin/clients',      emoji: '🏢' },
   { label: 'Support',     path: '/admin/support',      emoji: '🎧' },
   { label: 'Reports',     path: '/admin/reports',      emoji: '📈' },
@@ -40,6 +41,7 @@ const freelancerNav: NavItem[] = [
 const clientNav: NavItem[] = [
   { label: 'Home',           path: '/',                    emoji: '🏠' },
   { label: 'Dashboard',      path: '/client',              emoji: '📊' },
+  { label: 'My Profile',      path: '/client/profile',       emoji: '👤' },
   { label: 'My Requirements', path: '/client/requirements', emoji: '📋' },
   { label: 'Browse Experts', path: '/client/browse',       emoji: '🔍' },
   { label: 'My Projects',    path: '/client/projects',     emoji: '📁' },
@@ -98,11 +100,11 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
       }}>
         {/* Logo area */}
         <div style={{ padding: collapsed ? '18px 16px' : '20px 18px', borderBottom: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', gap: 10, minHeight: 64, overflow: 'hidden' }}>
-          <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg,#f97316,#dc2626)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 11, color: '#fff', flexShrink: 0, boxShadow: '0 4px 12px rgba(249,115,22,0.4)' }}>WS</div>
+          <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg,#1e3a5f,#3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 11, color: '#fff', flexShrink: 0, boxShadow: '0 4px 12px rgba(30,58,95,0.4)' }}>WS</div>
           {!collapsed && (
             <div style={{ animation: 'slideIn .2s ease', overflow: 'hidden' }}>
               <div style={{ fontWeight: 800, fontSize: 14, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-                Work<span style={{ color: '#f97316' }}>Support</span><span style={{ opacity: .35, fontWeight: 300 }}>360</span>
+                Work<span style={{ color: '#3b82f6' }}>Support</span><span style={{ opacity: .35, fontWeight: 300 }}>360</span>
               </div>
               <div style={{ fontSize: 10, fontWeight: 600, color: rc.color, marginTop: 1 }}>{rc.label}</div>
             </div>

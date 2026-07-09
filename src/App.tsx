@@ -6,6 +6,7 @@ import { Toaster } from 'react-hot-toast';
 import AppLayout from './components/layout/AppLayout';
 import { useAuthStore } from './store/authStore';
 import { ENV } from './config/env';
+import { HelmetProvider } from 'react-helmet-async';
 
 // Pages
 import HomePage from './pages/public/HomePage';
@@ -14,6 +15,7 @@ import RegisterPage from './pages/public/RegisterPage';
 import { TermsPage, PrivacyPage } from './pages/public/LegalPages';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminRequirements from './pages/admin/AdminRequirements';
+import AdminFreelancerApprovals from './pages/admin/AdminFreelancers';
 import AdminSupport from './pages/admin/AdminSupport';
 import AdminRequests from './pages/admin/AdminRequests';
 import AdminMeetings from './pages/admin/AdminMeetings';
@@ -31,10 +33,14 @@ const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 3
 const Protected: React.FC<{ children: React.ReactNode; role?: string }> = ({ children, role }) => {
   const { user, isAuthenticated } = useAuthStore();
   if (!isAuthenticated) return <Navigate to="/login" replace/>;
-  if (role && user?.role !== role) {
-    // Allow admin to access agent routes
-    if (!(role === 'agent' && (user?.role as string) === 'admin')) {
-      return <Navigate to="/" replace/>;
+  if (role) {
+    const userRole = ((user?.role as string) || '').toLowerCase();
+    const reqRole  = role.toLowerCase();
+    if (userRole !== reqRole) {
+      // Allow admin to access agent routes
+      if (!(reqRole === 'agent' && userRole === 'admin')) {
+        return <Navigate to="/" replace/>;
+      }
     }
   }
   // Agent and admin accessing /agent get NO AppLayout — standalone portal
@@ -48,9 +54,10 @@ const AutoRedirect: React.FC = () => {
   const navigate = useNavigate();
   useEffect(() => {
     if (!isAuthenticated || !user) return;
-    const path = user.role === 'admin' ? '/admin'
-      : (user.role as string) === 'agent' ? '/agent'
-      : user.role === 'freelancer' ? '/freelancer'
+    const r = ((user.role as string)||'').toLowerCase();
+    const path = r === 'admin' ? '/admin'
+      : r === 'agent'      ? '/agent'
+      : r === 'freelancer' ? '/freelancer'
       : '/client';
     navigate(path, { replace: true });
   }, [isAuthenticated, user, navigate]);
@@ -62,6 +69,7 @@ function App() {
   useEffect(() => { hydrate(); }, []);
 
   return (
+    <HelmetProvider>
     <QueryClientProvider client={qc}>
       <GoogleOAuthProvider clientId={ENV.GOOGLE_CLIENT_ID}>
         <BrowserRouter>
@@ -86,12 +94,12 @@ function App() {
             <Route path="/admin/support" element={<Protected role="admin"><AdminSupport/></Protected>}/>
             <Route path="/admin/requests" element={<Protected role="admin"><AdminRequests/></Protected>}/>
             <Route path="/admin/requirements" element={<Protected role="admin"><AdminRequirements/></Protected>}/>
+            <Route path="/admin/freelancers" element={<Protected role="admin"><AdminFreelancerApprovals/></Protected>}/>
             <Route path="/admin/meetings" element={<Protected role="admin"><AdminMeetings/></Protected>}/>
             <Route path="/admin/projects" element={<Protected role="admin"><AdminProjects/></Protected>}/>
             <Route path="/admin/timesheets" element={<Protected role="admin"><AdminTimesheets/></Protected>}/>
             <Route path="/admin/invoices" element={<Protected role="admin"><AdminInvoices/></Protected>}/>
             <Route path="/admin/payments" element={<Protected role="admin"><AdminPayments/></Protected>}/>
-            <Route path="/admin/freelancers" element={<Protected role="admin"><AdminFreelancers/></Protected>}/>
             <Route path="/admin/clients" element={<Protected role="admin"><AdminClients/></Protected>}/>
             <Route path="/admin/leaderboard" element={<Protected role="admin"><AdminLeaderboard/></Protected>}/>
             <Route path="/admin/reports" element={<Protected role="admin"><AdminReports/></Protected>}/>
@@ -122,6 +130,7 @@ function App() {
         </BrowserRouter>
       </GoogleOAuthProvider>
     </QueryClientProvider>
+    </HelmetProvider>
   );
 }
 
